@@ -377,6 +377,16 @@
     });
   }
 
+  // for the Patterns page: the kit being built
+  window.PDKits = {
+    sounds: function () {
+      var out = {};
+      readySlots().forEach(function (v) { out[v] = state.slots[v].prepared.sound; });
+      return out;
+    },
+    label: function () { return folderName(); },
+  };
+
   loadPrefs();
   buildSlots();
   wire();

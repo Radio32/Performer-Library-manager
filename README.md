@@ -28,6 +28,29 @@ Settings such as pitch, decay and drive are made on the NT and saved in its pres
 manager writes only standard WAV files with the plug-in's naming, so it keeps working as the
 NT's firmware changes.
 
+## Patterns
+
+The second page edits the **Performer's drum patterns**, in its library file `LIBRARY/DRUMS.LIB`:
+
+- **Open** the library from the Performer's card (or drop it on the page), pick a pattern, and
+  edit it on an eight-lane grid: BD, SNR, CHH, OHH, CLP, P1, P2, CYM, up to 4 bars of 1/16.
+  Click a step to set it, SHIFT + click (or right click) for an accent, drag to paint. Name,
+  style, length, tempo and swing are there too.
+- **Play** a pattern with its kit: open a folder of kits (like `BY KIT`) and pattern N plays kit
+  N, the way the Performer's kit track picks it by program change. Or play it with the kit on
+  the Kits page. The Performer's swing, its velocities (90, accents 127) and the closed hi-hat
+  cutting the open one are all there.
+- **Import MIDI:** a `.mid` file's drum notes go to the lanes. The pattern pack's notes (60–67),
+  General MIDI drums and the `loops` layout are recognised; longer files become several 4-bar
+  patterns, and swing is read from the timing.
+- **Export MIDI** with General MIDI notes on channel 10 (for a DAW), or with the pattern pack's
+  notes (60–67, for the MIDI collection that midi2lib builds the library from).
+- **Save** the library back to the card (in place, in Chrome and Edge) or download it. New and
+  imported patterns are added at the end, so the numbers of the others, and their kits, stay.
+
+The manager writes exactly the format the Performer reads (library format 6, Conducting
+Performer v29 and later): written back unchanged, a library comes out byte for byte the same.
+
 ## On the card
 
 Copy the kit folder into the card's `samples` folder, or a folder inside it such as
@@ -39,6 +62,9 @@ Plain HTML, CSS and JavaScript; no build step. `js/naming.js` follows the plug-i
 `src/kit.h`. The tests use macOS's built-in JavaScript engine:
 
 ```sh
-test/run.sh                       # naming, AIFF, resampling, WAV writing
+test/run.sh                       # naming, AIFF, resampling, WAV writing, drum patterns
 test/run.sh "path/to/BY KIT"      # also reads and prepares every WAV in a kit library
+test/run.sh "" path/to/DRUMS.LIB path/to/patterns-v2
+                                  # reads the Performer's library and writes it back (byte for
+                                  # byte), and imports the pattern pack's MIDI files against it
 ```

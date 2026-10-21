@@ -108,4 +108,60 @@ if (list.length) {
   print("       " + stereo + " stereo files, " + dual + " of them identical on both sides (made mono); " + (total / 1048576).toFixed(1) + " MB as 16-bit 48 kHz");
 }
 
+// ---------------------------------------------------------------- drum patterns
+print("Drum patterns");
+(function () {
+  var V = DrumLib.LANE_VOICES;
+  var p = DrumLib.emptyPattern("Test", "User");
+  p.steps = 64; p.bpm = 128; p.swing = 58;
+  [0, 7, 31, 32, 33, 63].forEach(function (s) { p.lanes.CYM.gates[s] = true; });
+  p.lanes.SNR.gates[4] = p.lanes.SNR.accents[4] = true;
+  p.lanes.BD.accents[9] = true;     // an accent without a gate is dropped
+  var back = DrumLib.readLibrary(DrumLib.writeLibrary([p, DrumLib.emptyPattern("Two", "Other")]));
+  var q = back.patterns[0];
+  check(back.count === 2 && q.name === "Test" && q.style === "User" && q.steps === 64 && q.bpm === 128 && q.swing === 58,
+        "a library written and read again keeps name, style, length, tempo and swing", JSON.stringify([back.count, q.name, q.steps, q.bpm, q.swing]));
+  check([0, 7, 31, 32, 33, 63].every(function (s) { return q.lanes.CYM.gates[s]; }) && q.lanes.CYM.gates.filter(Boolean).length === 6,
+        "all 64 steps survive (both halves of the 64-bit lanes)");
+  check(q.lanes.SNR.accents[4] && !q.lanes.BD.accents[9], "accents: kept on a hit, dropped without one");
+
+  // MIDI out and back in
+  var m = DrumLib.importMidi(DrumLib.exportMidi(q), { layout: "auto" });
+  var r = m.patterns[0];
+  var same = V.every(function (v) { return r.lanes[v].gates.join() === q.lanes[v].gates.join() && r.lanes[v].accents.join() === q.lanes[v].accents.join(); });
+  check(m.patterns.length === 1 && m.layout === "gm" && same && r.swing === q.swing && r.bpm === 128,
+        "export to MIDI and import again: the same pattern, swing and tempo", m.layout + " swing " + r.swing);
+  var pack = DrumLib.importMidi(DrumLib.exportMidi(q, { layout: "pack" }));
+  check(pack.layout === "pack" && pack.patterns[0].lanes.CYM.gates[63], "the pattern-pack layout (60–67) is recognised");
+})();
+
+var libPath = arguments[1], midiDir = arguments[2];
+if (libPath) {
+  print("The Performer's drum library");
+  var bytes = readFile(libPath, "binary");
+  var lib = DrumLib.readLibrary(bytes);
+  check(lib.count > 0, "reads " + libPath.split("/").pop(), lib.count + " patterns");
+  var again = DrumLib.writeLibrary(lib.patterns);
+  var identical = again.length === bytes.length && again.every(function (b, i) { return b === bytes[i]; });
+  check(identical, "written back, it is byte for byte the file midi2lib made", again.length + " / " + bytes.length + " bytes");
+  if (midiDir) {
+    // pattern NNN of the pattern pack imports to the same lanes as library pattern NNN
+    var bad = [], tried = 0;
+    for (var n = 0; n < Math.min(lib.count, 71); n++) {
+      var name = ("00" + n).slice(-3), lp = lib.patterns[n];
+      if (lp.style !== "patterns-v2") continue;
+      var file;
+      try { file = readFile(midiDir + "/" + name + ".mid", "binary"); } catch (e) { continue; }
+      tried++;
+      var ip = DrumLib.importMidi(file).patterns[0];
+      var ok = DrumLib.LANE_VOICES.every(function (v) {
+        for (var s = 0; s < lp.steps; s++) if (ip.lanes[v].gates[s] !== lp.lanes[v].gates[s]) return false;
+        return true;
+      });
+      if (!ok) bad.push(name);
+    }
+    check(tried > 0 && !bad.length, "MIDI import of the pattern pack matches the library (" + tried + " files)", bad.slice(0, 5).join(", "));
+  }
+}
+
 print(failures ? "\n" + failures + " check(s) FAILED" : "\nall checks passed");

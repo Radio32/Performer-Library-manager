@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Performer Library Manager</title>
-<meta name="description" content="Prepare drum kits for the Performer Drums plug-in on the Expert Sleepers disting NT: drop sounds on eight slots and save a ready-named kit folder.">
+<meta name="description" content="Prepare drum kits for the Performer Drums plug-in on the Expert Sleepers disting NT, and edit the Performer's drum patterns: drop sounds on eight slots, save a ready-named kit folder, play and edit patterns with your kits.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -15,8 +15,14 @@
   <header class="top">
     <div class="eyebrow">Performer Drums · disting NT</div>
     <h1>Library Manager</h1>
-    <p class="lede">Drop a sound on each of the eight slots and save. You get a kit folder for the NT's card, with every file named and converted the way the Performer Drums plug-in expects. Everything happens in your browser; no file is uploaded anywhere.</p>
+    <p class="lede">Make kits for the Performer Drums plug-in, and edit the Performer's drum patterns with them. Everything happens in your browser; no file is uploaded anywhere.</p>
+    <nav class="tabs" aria-label="Pages">
+      <a class="tab" href="#kits" id="tabKits">Kits</a>
+      <a class="tab" href="#patterns" id="tabPatterns">Patterns</a>
+    </nav>
   </header>
+
+  <div id="pageKits" class="page">
 
   <section class="kitbar" aria-label="Kit">
     <div class="field">
@@ -82,6 +88,78 @@
     </div>
   </section>
 
+  </div>
+
+  <div id="pagePatterns" class="page" hidden>
+    <section class="libbar" aria-label="Drum library">
+      <div class="libinfo">
+        <span class="help">Drum library</span>
+        <code id="libName">No library open</code>
+        <span class="help" id="libCount"></span>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="libOpen" type="button">Open DRUMS.LIB…</button>
+        <input id="libPick" type="file" accept=".lib,.LIB" hidden>
+        <button class="btn" id="libNew" type="button">New library</button>
+        <label class="btn" for="midiPick">Import MIDI…</label>
+        <input id="midiPick" type="file" accept=".mid,.midi,audio/midi" multiple hidden>
+        <button class="btn primary" id="libSave" type="button" disabled>Save library</button>
+      </div>
+      <p class="help libhelp">The Performer's drum patterns are in <code>LIBRARY/DRUMS.LIB</code> on its card. Pattern <b>N</b> plays kit <b>N</b>: the kit track sends program change N when it starts. New and imported patterns go at the end, so the numbers of the others never change.</p>
+    </section>
+
+    <div class="patterns">
+      <section class="plist" aria-label="Patterns">
+        <div class="plist-head">
+          <h2>Patterns</h2>
+          <div class="btnrow">
+            <button class="btn small" id="patNew" type="button">New</button>
+            <button class="btn small" id="patDup" type="button">Duplicate</button>
+            <button class="btn small danger" id="patDel" type="button">Delete</button>
+          </div>
+        </div>
+        <ol class="plist-items" id="patList"></ol>
+      </section>
+
+      <section class="editor" aria-label="Pattern">
+        <div class="pfields">
+          <div class="field pnum"><span class="help">Pattern</span><code id="patNumber">—</code></div>
+          <div class="field"><label for="patName">Name</label><input id="patName" type="text" maxlength="31" spellcheck="false"></div>
+          <div class="field"><label for="patStyle">Style</label><input id="patStyle" type="text" maxlength="31" spellcheck="false"></div>
+          <div class="field small"><label for="patBars">Bars</label>
+            <select id="patBars"><option value="16">1</option><option value="32">2</option><option value="48">3</option><option value="64">4</option></select></div>
+          <div class="field small"><label for="patBpm">Tempo</label><input id="patBpm" type="number" min="40" max="255" value="120"></div>
+          <div class="field small"><label for="patSwing">Swing %</label><input id="patSwing" type="number" min="50" max="75" value="50"></div>
+        </div>
+
+        <div class="transport">
+          <button class="btn primary" id="play" type="button" aria-pressed="false">▶ Play</button>
+          <div class="field kitsrc">
+            <label for="kitSource">Plays with</label>
+            <select id="kitSource">
+              <option value="match">The matching kit from a kits folder</option>
+              <option value="kits">The kit on the Kits page</option>
+            </select>
+          </div>
+          <label class="btn" for="kitsFolder">Open kits folder…</label>
+          <input id="kitsFolder" type="file" webkitdirectory multiple hidden>
+          <span class="help" id="kitPlaying"></span>
+        </div>
+
+        <div class="grid" id="grid" role="grid" aria-label="Steps"></div>
+        <p class="help">Click a step to set it, SHIFT + click (or right click) for an accent. Drag to paint. Click a voice's name to hear it.</p>
+
+        <div class="btnrow exportrow">
+          <span class="help">Export this pattern as MIDI:</span>
+          <button class="btn small" id="midiGm" type="button">General MIDI notes</button>
+          <button class="btn small" id="midiPack" type="button">Pattern pack notes (60–67)</button>
+        </div>
+        <p class="status" id="patStatus" role="status" aria-live="polite"></p>
+        <div class="confirm" id="patConfirm" hidden></div>
+      </section>
+    </div>
+  </div>
+
   <footer class="foot">
     <a href="https://github.com/docljunior/Performer-Library-manager">Source</a> ·
     <a href="https://github.com/docljunior/Performer-Drums">Performer Drums plug-in</a>
@@ -91,6 +169,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <script src="js/naming.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/drumlib.js"></script>
 <script src="js/app.js"></script>
+<script src="js/patterns.js"></script>
 </body>
 </html>
