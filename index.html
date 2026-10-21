@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Performer Library Manager</title>
+<meta name="description" content="Prepare drum kits for the Performer Drums plug-in on the Expert Sleepers disting NT: drop sounds on eight slots and save a ready-named kit folder.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Performer Drums · disting NT</div>
+    <h1>Library Manager</h1>
+    <p class="lede">Drop a sound on each of the eight slots and save. You get a kit folder for the NT's card, with every file named and converted the way the Performer Drums plug-in expects. Everything happens in your browser; no file is uploaded anywhere.</p>
+  </header>
+
+  <section class="kitbar" aria-label="Kit">
+    <div class="field">
+      <label for="kitNumber">Kit number</label>
+      <input id="kitNumber" type="number" min="0" max="999" value="1" inputmode="numeric">
+      <p class="help" id="numberHelp">Program change N selects kit N. The Performer's pattern NNN plays kit NNN.</p>
+    </div>
+    <div class="field">
+      <label for="kitName">Name <span class="count" id="nameCount">0/8</span></label>
+      <input id="kitName" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="Groove">
+      <p class="help">Up to 8 letters or digits. It shows on the NT's screen.</p>
+    </div>
+    <div class="folder">
+      <span class="help">Folder on the card</span>
+      <code id="folderName">001-</code>
+    </div>
+    <fieldset class="opts">
+      <legend>Converting</legend>
+      <label><input type="checkbox" id="optRate" checked> Convert to 48 kHz</label>
+      <label><input type="checkbox" id="optTrim" checked> Trim silence</label>
+      <label><input type="checkbox" id="optMono" checked> Make identical stereo mono</label>
+      <label><input type="checkbox" id="optNorm"> Normalise to −0.3 dBFS</label>
+    </fieldset>
+  </section>
+
+  <section aria-label="Slots">
+    <div class="slots-head">
+      <h2>Slots</h2>
+      <div class="btnrow">
+        <label class="btn" for="pickMany">Add sounds…</label>
+        <input id="pickMany" type="file" accept="audio/*,.wav,.aif,.aiff,.aifc" multiple hidden>
+        <label class="btn" for="pickFolder">Open a kit folder…</label>
+        <input id="pickFolder" type="file" webkitdirectory multiple hidden>
+        <button class="btn" id="clearAll" type="button">Clear all</button>
+      </div>
+    </div>
+    <p class="help">Drop several sounds anywhere on the page and they go to the slots their names point to (kick, snare, hh…), the rest into free slots. Drop on a slot to put a sound exactly there.</p>
+    <div class="slots" id="slots"></div>
+  </section>
+
+  <section class="export" aria-label="Save">
+    <div class="summary" id="summary"></div>
+    <div class="btnrow">
+      <button class="btn primary" id="saveCard" type="button">Save to card…</button>
+      <button class="btn" id="saveZip" type="button">Download zip</button>
+    </div>
+    <div class="confirm" id="confirm" hidden></div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h3>On the card</h3>
+      <p>Put the kit folder in the card's <code>samples</code> folder, or a folder inside it such as <code>samples/Performer Drums</code>. The NT looks for new samples when it starts, so restart it after adding a kit.</p>
+    </div>
+    <div>
+      <h3>What gets written</h3>
+      <p>16-bit WAV files, named <code>1KIK-012.wav</code>, <code>5SNR-012.wav</code> and so on, so each lands on its voice. Pitch, decay, drive and the rest are set on the NT and saved in its presets.</p>
+    </div>
+    <div>
+      <h3>Files it reads</h3>
+      <p>WAV and AIFF in any browser; MP3, FLAC, Ogg and others where the browser can decode them. "Save to card" needs Chrome or Edge; other browsers download a zip instead.</p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <a href="https://github.com/docljunior/Performer-Library-manager">Source</a> ·
+    <a href="https://github.com/docljunior/Performer-Drums">Performer Drums plug-in</a>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script src="js/naming.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
