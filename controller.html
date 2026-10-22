@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Performer Library Manager</title>
+<meta name="description" content="Map a Novation Launch Control XL 3 to the Conducting Performer: pick what each encoder, fader and button does.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Conducting Performer · Launch Control XL 3</div>
+    <h1>Library Manager</h1>
+    <p class="lede">Pick what each encoder, fader and button of the Launch Control XL 3 does on the Performer. Click a control, then choose its job. The map stays in this browser; copy it as text, or save it as a file for the Performer's SD card.</p>
+    <nav class="tabs" aria-label="Pages">
+      <a class="tab" href="index.html#kits">Kits</a>
+      <a class="tab" href="index.html#patterns">Patterns</a>
+      <a class="tab on" href="controller.html" aria-current="page">Controller</a>
+    </nav>
+  </header>
+
+  <section class="xl-bench" aria-label="Launch Control XL 3">
+    <div class="xl-scroll">
+      <div class="xl-panel" id="xlPanel">
+        <div class="xl-main">
+          <div class="xl-encoders" id="xlEncoders"></div>
+          <div class="xl-faders" id="xlFaders"></div>
+          <div class="xl-buttons" id="xlButtons"></div>
+        </div>
+        <div class="xl-side">
+          <div class="xl-oled" id="xlOled" aria-live="polite"></div>
+          <div class="xl-sidekeys" id="xlSide"></div>
+        </div>
+      </div>
+    </div>
+    <div class="xl-legend" id="xlLegend"></div>
+  </section>
+
+  <div class="xl-work">
+    <section class="xl-editor" aria-label="The selected control">
+      <h2 id="xlTitle">Pick a control</h2>
+      <p class="help" id="xlKind">Click an encoder, a fader or a button on the drawing.</p>
+      <div class="xl-fields">
+        <label for="xlFn">Does
+          <select id="xlFn" disabled></select>
+        </label>
+        <label for="xlIndex" id="xlIndexLabel" hidden>Which
+          <select id="xlIndex"></select>
+        </label>
+      </div>
+      <p class="help" id="xlNote"></p>
+      <div class="btnrow">
+        <button class="btn small" id="xlClear" disabled>Clear this control</button>
+      </div>
+    </section>
+
+    <section class="xl-summary" aria-label="The whole map">
+      <h2>The map</h2>
+      <div class="btnrow">
+        <button class="btn primary" id="xlSuggest">Suggested layout</button>
+        <button class="btn" id="xlCopy">Copy as text</button>
+        <button class="btn" id="xlSave">Save map file</button>
+        <button class="btn danger" id="xlClearAll">Clear all</button>
+      </div>
+      <div class="confirm" id="xlConfirm" hidden></div>
+      <p class="status" id="xlStatus" role="status" aria-live="polite"></p>
+      <textarea id="xlText" readonly hidden aria-label="The map as text"></textarea>
+      <div class="xl-table-wrap"><table class="xl-table" id="xlTable"></table></div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <a href="https://github.com/docljunior/Performer-Library-manager">Source</a> ·
+    <a href="https://github.com/docljunior/Performer-Drums">Performer Drums plug-in</a>
+  </footer>
+</div>
+
+<script src="js/controller.js"></script>
+</body>
+</html>
