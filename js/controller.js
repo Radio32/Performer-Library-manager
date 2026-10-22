@@ -1,8 +1,10 @@
 /*
  * Controller: a map of the Novation Launch Control XL 3 for the Conducting Performer.
- * Each control gets a job (a function, and for per-track, per-voice... jobs, which one).
+ * Each control gets a job (a function, and for per-track, per-voice... jobs, which one) and the
+ * MIDI message it sends (set the XL 3's custom mode in Novation Components to send the same).
  * Encoders and faders take values, buttons take actions. The map is kept in localStorage,
- * copied as text, or saved as a JSON file (XL3MAP.JSN) for the Performer's SD card.
+ * copied as text, or saved as XL3.MAP for the root of the Performer's SD card, one line per
+ * control: <control> <cc|note> <channel> <number> <abs|rel> <function> <index>
  */
 (function () {
   "use strict";
@@ -19,6 +21,27 @@
   SIDE.forEach(function (s) { CONTROLS.push({ id: s[0], kind: "action", group: "side", name: s[1], short: s[1] }); });
   var byId = {};
   CONTROLS.forEach(function (k) { byId[k.id] = k; });
+
+  // the MIDI each control sends by default (the encoders and faders as on the Launch Control XL
+  // factory template); set the XL 3's custom mode to the same, or change them here
+  function defaultMidi(id) {
+    var m = /^E(\d)-(\d)$/.exec(id), base = { 1: 13, 2: 29, 3: 49 };
+    if (m) return { type: "cc", ch: 1, num: base[m[1]] + parseInt(m[2], 10) - 1, rel: false };
+    m = /^F(\d)$/.exec(id);
+    if (m) return { type: "cc", ch: 1, num: 76 + parseInt(m[1], 10), rel: false };
+    m = /^B(\d)-(\d)$/.exec(id);
+    if (m) return { type: "cc", ch: 1, num: (m[1] === "1" ? 36 : 56) + parseInt(m[2], 10), rel: false };
+    var side = ["PGUP", "PGDN", "TRKL", "TRKR", "FN1", "FN2", "PLAY", "REC"].indexOf(id);
+    return { type: "cc", ch: 1, num: 102 + Math.max(0, side), rel: false };
+  }
+  function midiOf(id) {
+    var e = map[id];
+    return e && e.midi ? e.midi : defaultMidi(id);
+  }
+  function midiText(id) {
+    var m = midiOf(id);
+    return (m.type === "note" ? "Note " : "CC ") + m.num + " · ch " + m.ch + (m.rel ? " · relative" : "");
+  }
 
   // ---------------------------------------------------------------- the jobs
 
@@ -53,7 +76,6 @@
     ["cond.tempo", "conductor", "value", "Tempo", null, ""],
     ["cond.jump", "conductor", "value", "Chord jump", null, ""],
     ["cond.colour", "conductor", "value", "Chord colour", null, "Triads, as written, sevenths, ninths."],
-    ["cond.voicing", "conductor", "value", "Voicing", null, ""],
     ["trk.warp", "tracks", "value", "Warp", "track", ""],
     ["trk.density", "tracks", "value", "Density", "track", ""],
     ["trk.magnet", "tracks", "value", "Magnet", "track", ""],
@@ -220,22 +242,29 @@
       idxSel.value = String(entry.index || 0);
     }
     $("xlNote").textContent = fn ? fn.note : "";
+    var m = midiOf(k.id);
+    $("xlMidiType").value = m.type; $("xlMidiCh").value = String(m.ch); $("xlMidiNum").value = String(m.num);
+    $("xlMidiRel").value = m.rel ? "rel" : "abs";
+    $("xlMidiRelLabel").hidden = k.kind !== "value";
+    ["xlMidiType", "xlMidiCh", "xlMidiNum", "xlMidiRel"].forEach(function (id) { $(id).disabled = false; });
   }
 
   function renderTable() {
     var t = $("xlTable");
     t.innerHTML = "";
     var head = document.createElement("tr");
-    ["Control", "Does"].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; head.append(th); });
+    ["Control", "Sends", "Does"].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; head.append(th); });
     t.append(head);
     CONTROLS.forEach(function (k) {
       var tr = document.createElement("tr");
       if (k.id === selected) tr.className = "on";
-      var a = document.createElement("td"), b2 = document.createElement("td");
+      var a = document.createElement("td"), mid = document.createElement("td"), b2 = document.createElement("td");
       a.textContent = k.name;
-      b2.textContent = map[k.id] ? label(map[k.id]) : "—";
+      mid.textContent = midiText(k.id);
+      mid.className = "xl-midi";
+      b2.textContent = map[k.id] && fnById[map[k.id].fn] ? label(map[k.id]) : "—";
       if (map[k.id] && fnById[map[k.id].fn]) b2.dataset.cat = fnById[map[k.id].fn].cat;
-      tr.append(a, b2);
+      tr.append(a, mid, b2);
       tr.addEventListener("click", function () { select(k.id); });
       t.append(tr);
     });
@@ -248,7 +277,8 @@
   $("xlFn").addEventListener("change", function () {
     if (!selected) return;
     var v = $("xlFn").value;
-    if (v) map[selected] = { fn: v, index: 0 }; else delete map[selected];
+    var midi = map[selected] && map[selected].midi;
+    if (v) map[selected] = { fn: v, index: 0, midi: midi }; else if (midi) map[selected] = { fn: "", index: 0, midi: midi }; else delete map[selected];
     save(); render();
   });
   $("xlIndex").addEventListener("change", function () {
@@ -256,6 +286,20 @@
     map[selected].index = parseInt($("xlIndex").value, 10) || 0;
     save(); render();
   });
+  function editMidi() {
+    if (!selected) return;
+    var m = {
+      type: $("xlMidiType").value,
+      ch: Math.max(1, Math.min(16, parseInt($("xlMidiCh").value, 10) || 1)),
+      num: Math.max(0, Math.min(127, parseInt($("xlMidiNum").value, 10) || 0)),
+      rel: $("xlMidiRel").value === "rel"
+    };
+    map[selected] = map[selected] || { fn: "", index: 0 };
+    map[selected].midi = m;
+    save(); render();
+  }
+  ["xlMidiType", "xlMidiCh", "xlMidiNum", "xlMidiRel"].forEach(function (id) { $(id).addEventListener("change", editMidi); });
+
   $("xlClear").addEventListener("click", function () {
     if (!selected) return;
     delete map[selected]; save(); render();
@@ -288,7 +332,7 @@
       lines.push(groups[g] + ":");
       CONTROLS.forEach(function (k) {
         if (k.group !== g) return;
-        lines.push("  " + k.short + "  " + (map[k.id] ? label(map[k.id]) : "-"));
+        lines.push("  " + k.short + "  " + midiText(k.id) + "  " + (map[k.id] && fnById[map[k.id].fn] ? label(map[k.id]) : "-"));
       });
       lines.push("");
     });
@@ -302,19 +346,30 @@
       navigator.clipboard.writeText(text).then(function () { status("Copied. Paste it wherever you like."); }, fallback);
     } catch (e) { fallback(); }
   });
+  // XL3.MAP: what the Performer reads (a line per mapped control)
+  function mapFile() {
+    var lines = ["# Conducting Performer controller map (Launch Control XL 3)",
+                 "# <control> <cc|note> <channel> <number> <abs|rel> <function> <index>"];
+    CONTROLS.forEach(function (k) {
+      var e = map[k.id];
+      if (!e || !fnById[e.fn]) return;
+      var m = midiOf(k.id);
+      lines.push([k.id, m.type, m.ch, m.num, m.rel ? "rel" : "abs", e.fn, e.index || 0].join(" "));
+    });
+    return lines.join("\n") + "\n";
+  }
   $("xlSave").addEventListener("click", function () {
-    var data = { format: "conducting-performer-xl3-map", version: 1, controls: map };
-    var blob = new Blob([JSON.stringify(data, null, 2) + "\n"], { type: "application/json" });
+    var blob = new Blob([mapFile()], { type: "text/plain" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "XL3MAP.JSN";
+    a.download = "XL3.MAP";
     document.body.append(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-    status("Saved as XL3MAP.JSN. The Performer will read it from the SD card once the firmware supports the XL 3.");
+    status("Saved as XL3.MAP. Put it in the SD card's root; the Performer reads it at start (T8 SYSTEM UTILS reloads it).");
   });
 
   build();
   render();
 
-  window.PDController = { map: function () { return map; }, select: select, text: asText };
+  window.PDController = { map: function () { return map; }, select: select, text: asText, file: mapFile };
 })();
