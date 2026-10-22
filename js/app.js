@@ -99,7 +99,7 @@
       var meta = el("div", "meta");
       meta.append(el("div", "src", s.fileName));
       meta.append(el("div", null, fmtRate(o.rate) + " · " + (o.sourceBits === "float" ? "32-bit float" : o.sourceBits === "compressed" ? "compressed" : o.sourceBits + "-bit") +
-        " · " + (o.channels.length === 1 ? "mono" : "stereo") + "  →  " + (p.channels.length === 1 ? "mono" : "stereo") + ", " + fmtSecs(p.channels[0].length / p.rate)));
+        " · " + (o.channels.length === 1 ? "mono" : "stereo") + "  →  " + s.prepared.bits + "-bit " + (p.channels.length === 1 ? "mono" : "stereo") + ", " + fmtSecs(p.channels[0].length / p.rate)));
       if (s.prepared.notes.length) meta.append(el("div", "notes", s.prepared.notes.join(" · ")));
       body.append(meta);
       requestAnimationFrame(function () { drawWave(canvas, p); });
@@ -261,7 +261,7 @@
 
   function kitFiles() {
     return readySlots().map(function (v, i) {
-      return { name: Naming.fileFor(v, state.number), bytes: PDAudio.encodeWav16(state.slots[v].prepared.sound, 1 + i) };
+      return { name: Naming.fileFor(v, state.number), bytes: PDAudio.encodeWav(state.slots[v].prepared.sound, state.slots[v].prepared.bits, 1 + i) };
     });
   }
 
@@ -367,6 +367,8 @@
     document.addEventListener("dragover", function (e) { e.preventDefault(); });
     document.addEventListener("drop", function (e) {
       e.preventDefault();
+      // the Patterns page handles its own drops; nothing lands on the hidden Kits page
+      if (location.hash === "#patterns") return;
       filesFromDrop(e.dataTransfer).then(function (files) { loadMany(files, files.kitFolder); });
     });
 

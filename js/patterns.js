@@ -7,7 +7,9 @@
 
 (function () {
   var VOICES = Naming.VOICES;                 // the machine's order (rows)
-  var NORMAL = 90 / 127;                      // the Performer's velocity 90, accents 127
+  // the plug-in's level for a velocity at its default velocity depth (100 %): (velocity / 127)²
+  function velocityGain(velocity) { var v = velocity / 127; return v * v; }
+  var NORMAL = velocityGain(90);              // the Performer's velocity 90, accents 127
 
   var $ = function (id) { return document.getElementById(id); };
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
@@ -315,6 +317,13 @@
     return buf;
   }
 
+  function nearestKit(number) {
+    var nums = Object.keys(kitsFolder).map(Number).sort(function (a, b) { return a - b; });
+    if (!nums.length) return -1;
+    var below = nums.filter(function (n) { return n <= number; });
+    return below.length ? below[below.length - 1] : nums[0];
+  }
+
   // the sounds for the selected pattern: { voice: AudioBuffer } and a label
   function kitFor(number) {
     if ($("kitSource").value === "kits") {
@@ -323,7 +332,12 @@
       return Promise.resolve({ buffers: out, label: Object.keys(out).length ? "the Kits page (" + window.PDKits.label() + ")" : null });
     }
     var kit = kitsFolder[number];
-    if (!kit) return Promise.resolve({ buffers: {}, label: null });
+    if (!kit) {
+      // no kit with this number: the nearest one below it (or the first), so the pattern still sounds
+      var near = nearestKit(number);
+      if (near < 0) return Promise.resolve({ buffers: {}, label: null });
+      return kitFor(near);
+    }
     if (!kitCache[number]) {
       var names = kit.files.map(function (f) { return f.name; }), a = Naming.assign(names), out2 = {};
       kitCache[number] = Promise.all(VOICES.map(function (v) {
@@ -346,14 +360,15 @@
     } else if (!Object.keys(kitsFolder).length) {
       label.textContent = "Open a folder of kits (like BY KIT) and pattern " + pad3(sel) + " plays kit " + pad3(sel) + ".";
     } else {
-      label.textContent = kitsFolder[sel] ? "Plays kit " + kitsFolder[sel].name : "No kit " + pad3(sel) + " in the folder: silent.";
+      var near = nearestKit(sel);
+      label.textContent = kitsFolder[sel] ? "Plays kit " + kitsFolder[sel].name : "No kit " + pad3(sel) + ": playing " + kitsFolder[near].name + ".";
     }
   }
 
   // ---------------------------------------------------------------- playing
 
   var actx = null, out = null, playing = false, timer = null, kit = { buffers: {} };
-  var nextStep = 0, loopStart = 0, openHat = null, pending = [];
+  var nextStep = 0, loopStart = 0, hats = {}, pending = [];
   var AHEAD = 0.12;
 
   function audio() {
@@ -368,13 +383,14 @@
     var src = actx.createBufferSource(), g = actx.createGain();
     src.buffer = buf; g.gain.value = gain;
     src.connect(g); g.connect(out);
-    // the closed hi-hat cuts the open one (the plug-in's choke group)
-    if (v === "CHH" && openHat) {
-      try { openHat.g.gain.setTargetAtTime(0, time, 0.004); openHat.src.stop(time + 0.03); } catch (e) {}
-      openHat = null;
+    // the two hi-hats cut each other (the plug-in's choke group A, a 5 ms fade)
+    var other = v === "CHH" ? "OHH" : v === "OHH" ? "CHH" : null;
+    if (other && hats[other]) {
+      try { hats[other].g.gain.setTargetAtTime(0, time, 0.004); hats[other].src.stop(time + 0.03); } catch (e) {}
+      hats[other] = null;
     }
     src.start(time);
-    if (v === "OHH") openHat = { src: src, g: g };
+    if (other) hats[v] = { src: src, g: g };
   }
 
   function schedule() {
@@ -387,7 +403,7 @@
       if (t > actx.currentTime + AHEAD) break;
       VOICES.forEach(function (v) {
         var l = p.lanes[v];
-        if (l.gates[s]) hit(v, t, l.accents[s] ? 1 : NORMAL);
+        if (l.gates[s]) hit(v, t, l.accents[s] ? velocityGain(127) : NORMAL);
       });
       pending.push({ t: t, s: s });
       nextStep++;
@@ -405,7 +421,7 @@
       if (!Object.keys(k.buffers).length) setStatus($("kitSource").value === "kits" ? "No sounds on the Kits page: add some there first." : "No kit to play: open a kits folder, or choose the Kits page.", "err");
       else setStatus("Playing pattern " + pad3(sel) + " with " + k.label + ".");
       playing = true;
-      nextStep = 0; pending = []; openHat = null;
+      nextStep = 0; pending = []; hats = {};
       loopStart = actx.currentTime + 0.05;
       clearInterval(timer);
       timer = setInterval(schedule, 25);

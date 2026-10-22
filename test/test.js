@@ -81,6 +81,12 @@ var back = PDAudio.read(PDAudio.encodeWav16(src, 7));
 var maxErr = 0;
 for (var i = 0; i < src.channels[0].length; i++) for (var c = 0; c < 2; c++) maxErr = Math.max(maxErr, Math.abs(back.channels[c][i] - src.channels[c][i]));
 check(back.rate === 48000 && back.channels.length === 2 && maxErr < 3 / 32768, "16-bit WAV reads back within dither", (maxErr * 32768).toFixed(2) + " LSB");
+var back24 = PDAudio.read(PDAudio.encodeWav(src, 24));
+var maxErr24 = 0;
+for (var i = 0; i < src.channels[0].length; i++) for (var c = 0; c < 2; c++) maxErr24 = Math.max(maxErr24, Math.abs(back24.channels[c][i] - src.channels[c][i]));
+check(back24.sourceBits === 24 && maxErr24 < 1 / 8388607, "24-bit WAV reads back within 1 LSB", (maxErr24 * 8388608).toFixed(2) + " LSB of 24 bits");
+check(PDAudio.outputBits({ sourceBits: 16 }) === 16 && PDAudio.outputBits({ sourceBits: 24 }) === 24 && PDAudio.outputBits({ sourceBits: "float" }) === 24 && PDAudio.outputBits({ sourceBits: 8 }) === 16,
+  "bit depth kept: 8/16-bit sources -> 16, 24/32/float -> 24");
 
 // ---------------------------------------------------------------- trimming
 var t = new Float32Array(48000); for (var i = 4800; i < 9600; i++) t[i] = 0.5 * Math.sin(i / 3);
@@ -139,12 +145,22 @@ var libPath = arguments[1], midiDir = arguments[2];
 if (libPath) {
   print("The Performer's drum library");
   var bytes = readFile(libPath, "binary");
-  var lib = DrumLib.readLibrary(bytes);
-  check(lib.count > 0, "reads " + libPath.split("/").pop(), lib.count + " patterns");
-  var again = DrumLib.writeLibrary(lib.patterns);
-  var identical = again.length === bytes.length && again.every(function (b, i) { return b === bytes[i]; });
-  check(identical, "written back, it is byte for byte the file midi2lib made", again.length + " / " + bytes.length + " bytes");
-  if (midiDir) {
+  var lib;
+  try {
+    lib = DrumLib.readLibrary(bytes);
+    check(lib.count > 0, "reads " + libPath.split("/").pop(), lib.count + " patterns");
+  } catch (e) {
+    lib = { count: 0, patterns: [] };
+    check(false, "reads " + libPath.split("/").pop(), e.message);
+  }
+  if (lib.count > 0) {
+    var again = DrumLib.writeLibrary(lib.patterns);
+    var identical = again.length === bytes.length && again.every(function (b, i) { return b === bytes[i]; });
+    check(identical, "written back, it is byte for byte the file midi2lib made", again.length + " / " + bytes.length + " bytes");
+  }
+  if (midiDir && lib.count < 71) {
+    print("  (the pattern pack has 71 patterns and this library " + lib.count + ": not the pack's library, the comparison is skipped)");
+  } else if (midiDir) {
     // pattern NNN of the pattern pack imports to the same lanes as library pattern NNN
     var bad = [], tried = 0;
     for (var n = 0; n < Math.min(lib.count, 71); n++) {

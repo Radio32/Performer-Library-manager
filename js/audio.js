@@ -1,6 +1,6 @@
 /*
  * Audio for the library manager: reading WAV and AIFF, preparing a sample
- * for the disting NT, and writing it as a 16-bit WAV.
+ * for the disting NT, and writing it as a 16- or 24-bit WAV.
  *
  * Plain JavaScript with no browser APIs (except the optional decodeAudioData
  * fallback in decode()), so the same code runs in the page and in the tests.
@@ -227,35 +227,49 @@ var PDAudio = (function () {
     } else if (p > 1) {
       s = gain(s, 0.999 / p); notes.push("turned down " + (20 * Math.log10(p / 0.999)).toFixed(1) + " dB to avoid clipping");
     }
-    return { sound: s, notes: notes };
+    return { sound: s, notes: notes, bits: outputBits(sound) };
   }
+
+  // The NT reads 8, 16 and 24-bit and float WAV, so nothing is reduced below what it was:
+  // 8 and 16-bit sources are written as 16-bit, everything else (24, 32, float, MP3...) as 24-bit.
+  function outputBits(sound) { return sound.sourceBits === 8 || sound.sourceBits === 16 ? 16 : 24; }
 
   // ---------------------------------------------------------------- writing
 
-  // 16-bit PCM WAV, with TPDF dither. seed makes the dither repeatable.
-  function encodeWav16(sound, seed) {
-    var ch = sound.channels.length, frames = sound.channels[0].length;
-    var dataLen = frames * ch * 2, buf = new ArrayBuffer(44 + dataLen), dv = new DataView(buf);
+  // PCM WAV, 16-bit (with TPDF dither; seed makes it repeatable) or 24-bit.
+  function encodeWav(sound, bits, seed) {
+    var ch = sound.channels.length, frames = sound.channels[0].length, bps = bits === 24 ? 3 : 2;
+    var dataLen = frames * ch * bps, buf = new ArrayBuffer(44 + dataLen + (dataLen & 1)), dv = new DataView(buf);
     function s4(o, s) { for (var i = 0; i < 4; i++) dv.setUint8(o + i, s.charCodeAt(i)); }
     s4(0, "RIFF"); dv.setUint32(4, 36 + dataLen, true); s4(8, "WAVE");
     s4(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true);
-    dv.setUint32(24, sound.rate, true); dv.setUint32(28, sound.rate * ch * 2, true);
-    dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true);
+    dv.setUint32(24, sound.rate, true); dv.setUint32(28, sound.rate * ch * bps, true);
+    dv.setUint16(32, ch * bps, true); dv.setUint16(34, bps * 8, true);
     s4(36, "data"); dv.setUint32(40, dataLen, true);
+    var o = 44;
+    if (bps === 3) {
+      for (var i = 0; i < frames; i++) for (var c = 0; c < ch; c++, o += 3) {
+        var v = Math.round(sound.channels[c][i] * 8388607);
+        v = v > 8388607 ? 8388607 : v < -8388608 ? -8388608 : v;
+        dv.setUint8(o, v & 255); dv.setUint8(o + 1, (v >> 8) & 255); dv.setUint8(o + 2, (v >> 16) & 255);
+      }
+      return new Uint8Array(buf);
+    }
     var r = (seed || 1) >>> 0;
     function rnd() { r ^= r << 13; r >>>= 0; r ^= r >>> 17; r ^= r << 5; r >>>= 0; return r / 4294967296; }
-    var o = 44;
-    for (var i = 0; i < frames; i++) for (var c = 0; c < ch; c++, o += 2) {
-      var v = sound.channels[c][i] * 32767 + (rnd() - rnd());
+    for (i = 0; i < frames; i++) for (c = 0; c < ch; c++, o += 2) {
+      v = sound.channels[c][i] * 32767 + (rnd() - rnd());
       v = Math.round(v);
       dv.setInt16(o, v > 32767 ? 32767 : v < -32768 ? -32768 : v, true);
     }
     return new Uint8Array(buf);
   }
+  function encodeWav16(sound, seed) { return encodeWav(sound, 16, seed); }
 
   return {
     read: read, readWav: readWav, readAiff: readAiff, decode: decode,
-    resample: resample, trim: trim, peak: peak, isDualMono: isDualMono, prepare: prepare, encodeWav16: encodeWav16,
+    resample: resample, trim: trim, peak: peak, isDualMono: isDualMono, prepare: prepare, outputBits: outputBits,
+    encodeWav: encodeWav, encodeWav16: encodeWav16,
   };
 })();
 

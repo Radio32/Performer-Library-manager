@@ -15,7 +15,8 @@ Everything runs in the browser. No sound is uploaded anywhere.
   `snare`, `hh`, `tom`…), using the same rules as the plug-in. The rest fill the free slots.
 - **Reads** WAV (8/16/24/32-bit, float) and AIFF/AIFC in every browser; MP3, FLAC, Ogg and others
   where the browser can decode them.
-- **Converts** to 16-bit WAV with dither, and optionally:
+- **Converts** to WAV at the sound's own resolution: 24-bit, 32-bit and float sources are written
+  as 24-bit, 8 and 16-bit ones as 16-bit (with dither). The NT reads both. Optionally it also:
   - resamples to 48 kHz (64-tap windowed sinc),
   - trims silence before and after the sound,
   - makes stereo files with identical sides mono,
