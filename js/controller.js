@@ -67,7 +67,7 @@
     ["perf.tension", "perform", "value", "Tension", null, "Sevenths, ninths and more chord jumps."],
     ["perf.harmony", "perform", "value", "Harmony (complexity)", null, "Down: triads, and notes move to chord tones and roots."],
     ["perf.drums", "perform", "value", "Drums (complexity)", null, "Down: the strongest voices on the strongest beats."],
-    ["perf.fill", "perform", "action", "Drum fill (hold)", "slot", "The drums play that slot while held."],
+    ["perf.fill", "perform", "action", "Drum fill (hold)", "slot", "The drums play fill 1-8 (PAGE + S4 FILLS) while held."],
     ["perf.repeat", "perform", "action", "Beat repeat (hold)", "repeat", "Every track repeats while held."],
     ["perf.capture", "perform", "action", "Capture", null, "What plays, into a free pattern."],
     ["cond.next", "conductor", "action", "Next chord", null, "At the trigger timing (conductor SETUP)."],
