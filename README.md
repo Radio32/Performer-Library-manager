@@ -4,7 +4,7 @@ A web page for preparing drum kits for the **Performer Drums** plug-in on the Ex
 disting NT. Drop a sound on each of the eight slots, name the kit, and save. You get a kit
 folder for the NT's card, with every file named and converted the way the plug-in expects.
 
-**Use it:** https://docljunior.github.io/Performer-Library-manager/
+**Use it:** https://radio32.github.io/Performer-Library-manager/
 
 Everything runs in the browser. No sound is uploaded anywhere.
 
