@@ -1,5 +1,5 @@
 /*
- * Controller: a map of the Novation Launch Control XL 3 for the Conducting Performer.
+ * Controller: a map of the Novation Launch Control XL 3 for the Conductor Performer.
  * Each control gets a job (a function, and for per-track, per-voice... jobs, which one) and the
  * MIDI message it sends (set the XL 3's custom mode in Novation Components to send the same).
  * Encoders and faders take values, buttons take actions. The map is kept in localStorage,
@@ -66,7 +66,7 @@
     ["perf.repeat", "perform", "action", "Beat repeat (hold)", "repeat", "Every track repeats while held."],
     ["perf.capture", "perform", "action", "Capture", null, "What plays, into a free pattern."],
     ["cond.next", "conductor", "action", "Next chord", null, "From the next step."],
-    ["cond.swing", "conductor", "value", "Swing", null, ""],
+    ["cond.swing", "conductor", "value", "Swing", null, "Arp, bass, melody and free tracks."],
     ["cond.tempo", "conductor", "value", "Tempo", null, ""],
     ["cond.jump", "conductor", "value", "Chord jump", null, ""],
     ["cond.colour", "conductor", "value", "Chord colour", null, "Triads, as written, sevenths, ninths."],
@@ -87,6 +87,7 @@
     ["drm.slot", "drums", "value", "Voice slot", "voice", "Follow, or slot 1-16 (a variation)."],
     ["drm.density", "drums", "value", "Drum density", null, ""],
     ["drm.fillamount", "drums", "value", "Drum fill amount", null, ""],
+    ["drm.swing", "drums", "value", "Drum swing", null, "The drums' own swing."],
     ["drm.mute", "drums", "action", "Voice mute", "voice", ""],
     ["drm.next", "drums", "action", "Drum list: next entry", null, ""],
     ["drm.list", "drums", "action", "Drum list on/off", null, ""],
@@ -323,7 +324,7 @@
   function status(text) { $("xlStatus").textContent = text; }
 
   function asText() {
-    var lines = ["LAUNCH CONTROL XL 3 MAP (Conducting Performer)", ""];
+    var lines = ["LAUNCH CONTROL XL 3 MAP (Conductor Performer)", ""];
     var groups = { enc: "Encoders", fader: "Faders", btn: "Buttons", side: "Side buttons" };
     Object.keys(groups).forEach(function (g) {
       lines.push(groups[g] + ":");
@@ -345,7 +346,7 @@
   });
   // XL3.MAP: what the Performer reads (a line per mapped control)
   function mapFile() {
-    var lines = ["# Conducting Performer controller map (Launch Control XL 3)",
+    var lines = ["# Conductor Performer controller map (Launch Control XL 3)",
                  "# <control> <cc|note> <channel> <number> <abs|rel> <function> <index>"];
     CONTROLS.forEach(function (k) {
       var e = map[k.id];
