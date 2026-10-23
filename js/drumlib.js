@@ -66,7 +66,7 @@ var DrumLib = (function () {
     if (magic !== "PLIB") throw new Error("This isn't a Performer library file.");
     var version = bytes[4], role = bytes[5];
     if (role !== ROLE_DRUMS) throw new Error("This is a Performer library, but not the drum library (DRUMS.LIB).");
-    if (version !== VERSION) throw new Error("This drum library is format " + version + "; the manager reads format 6 (Conductor Performer v29 and later). Rebuild it with midi2lib.");
+    if (version !== VERSION) throw new Error("This drum library is format " + version + "; the manager reads format 6 (Conducting Performer v29 and later). Rebuild it with midi2lib.");
     var count = dv.getUint16(6, true);
     var patterns = [];
     for (var n = 0; n < count; n++) {

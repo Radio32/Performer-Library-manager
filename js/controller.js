@@ -1,5 +1,5 @@
 /*
- * Controller: a map of the Novation Launch Control XL 3 for the Conductor Performer.
+ * Controller: a map of the Novation Launch Control XL 3 for the Conducting Performer.
  * Each control gets a job (a function, and for per-track, per-voice... jobs, which one) and the
  * MIDI message it sends (set the XL 3's custom mode in Novation Components to send the same).
  * Encoders and faders take values, buttons take actions. The map is kept in localStorage,
@@ -324,7 +324,7 @@
   function status(text) { $("xlStatus").textContent = text; }
 
   function asText() {
-    var lines = ["LAUNCH CONTROL XL 3 MAP (Conductor Performer)", ""];
+    var lines = ["LAUNCH CONTROL XL 3 MAP (Conducting Performer)", ""];
     var groups = { enc: "Encoders", fader: "Faders", btn: "Buttons", side: "Side buttons" };
     Object.keys(groups).forEach(function (g) {
       lines.push(groups[g] + ":");
@@ -346,7 +346,7 @@
   });
   // XL3.MAP: what the Performer reads (a line per mapped control)
   function mapFile() {
-    var lines = ["# Conductor Performer controller map (Launch Control XL 3)",
+    var lines = ["# Conducting Performer controller map (Launch Control XL 3)",
                  "# <control> <cc|note> <channel> <number> <abs|rel> <function> <index>"];
     CONTROLS.forEach(function (k) {
       var e = map[k.id];

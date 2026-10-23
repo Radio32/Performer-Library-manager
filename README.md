@@ -49,7 +49,7 @@ The second page edits the **Performer's drum patterns**, in its library file `LI
 - **Save** the library back to the card (in place, in Chrome and Edge) or download it. New and
   imported patterns are added at the end, so the numbers of the others, and their kits, stay.
 
-The manager writes exactly the format the Performer reads (library format 6, Conductor
+The manager writes exactly the format the Performer reads (library format 6, Conducting
 Performer v29 and later): written back unchanged, a library comes out byte for byte the same.
 
 ## On the card
