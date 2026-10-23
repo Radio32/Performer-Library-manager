@@ -62,21 +62,14 @@
   };
   // id, category, kind (value | action), name, per (which), note
   var FNS = [
-    ["perf.key", "perform", "value", "Key (circle of fifths)", null, "A fifth per step, at the launch timing."],
-    ["perf.morph", "perform", "value", "Morph", null, "Drums into the next entry, following tracks toward the next chord."],
-    ["perf.tension", "perform", "value", "Tension", null, "Sevenths, ninths and more chord jumps."],
-    ["perf.harmony", "perform", "value", "Harmony (complexity)", null, "Down: triads, and notes move to chord tones and roots."],
-    ["perf.drums", "perform", "value", "Drums (complexity)", null, "Down: the strongest voices on the strongest beats."],
     ["perf.fill", "perform", "action", "Drum fill (hold)", "slot", "The drums play fill 1-8 (PAGE + S4 FILLS) while held."],
     ["perf.repeat", "perform", "action", "Beat repeat (hold)", "repeat", "Every track repeats while held."],
     ["perf.capture", "perform", "action", "Capture", null, "What plays, into a free pattern."],
-    ["cond.next", "conductor", "action", "Next chord", null, "At the trigger timing (conductor SETUP)."],
-    ["cond.group", "conductor", "action", "Next group", null, "The next loop group or HOLD slot."],
+    ["cond.next", "conductor", "action", "Next chord", null, "From the next step."],
     ["cond.swing", "conductor", "value", "Swing", null, ""],
     ["cond.tempo", "conductor", "value", "Tempo", null, ""],
     ["cond.jump", "conductor", "value", "Chord jump", null, ""],
     ["cond.colour", "conductor", "value", "Chord colour", null, "Triads, as written, sevenths, ninths."],
-    ["trk.warp", "tracks", "value", "Warp", "track", ""],
     ["trk.density", "tracks", "value", "Density", "track", ""],
     ["trk.magnet", "tracks", "value", "Magnet", "track", ""],
     ["trk.octave", "tracks", "value", "Octave", "track", ""],
@@ -116,25 +109,29 @@
 
   function suggested() {
     var m = {};
-    var row1 = ["perf.key", "perf.morph", "perf.tension", "perf.harmony", "perf.drums", "cond.swing", "cond.tempo", "cond.jump"];
-    row1.forEach(function (fn, i) { m["E1-" + (i + 1)] = { fn: fn, index: 0 }; });
+    var row1 = ["cond.swing", "cond.tempo", "cond.jump", "cond.colour", "drm.density", "drm.fillamount", "mod.rate", "mod.rate"];
+    row1.forEach(function (fn, i) { m["E1-" + (i + 1)] = { fn: fn, index: i == 7 ? 1 : 0 }; });
     for (var i = 0; i < 8; i++) {
-      m["E2-" + (i + 1)] = { fn: "trk.warp", index: i };
+      m["E2-" + (i + 1)] = { fn: "trk.octave", index: i };
       m["E3-" + (i + 1)] = { fn: "drm.chance", index: i };
       m["F" + (i + 1)] = { fn: "trk.density", index: i };
       m["B1-" + (i + 1)] = { fn: "trk.mute", index: i };
       m["B2-" + (i + 1)] = { fn: "drm.mute", index: i };
     }
-    m.PGUP = { fn: "cond.group", index: 0 };
+    m.PGUP = { fn: "drm.next", index: 0 };
     m.PGDN = { fn: "cond.next", index: 0 };
     m.TRKL = { fn: "trk.prev", index: 0 };
     m.TRKR = { fn: "trk.next", index: 0 };
     m.FN1 = { fn: "perf.capture", index: 0 };
-    m.FN2 = { fn: "drm.next", index: 0 };
+    m.FN2 = { fn: "drm.list", index: 0 };
     m.PLAY = { fn: "tr.play", index: 0 };
     m.REC = { fn: "tr.record", index: 0 };
     return m;
   }
+  // functions the firmware no longer has (v48: the PERF macros, warp, next group) leave the map
+  Object.keys(map).forEach(function (k) {
+    if (!map[k] || !FNS.some(function (f) { return f[0] === map[k].fn; })) delete map[k];
+  });
   if (!Object.keys(map).length) map = suggested();
 
   function label(entry, short) {
