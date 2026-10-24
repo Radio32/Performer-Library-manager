@@ -72,6 +72,7 @@
     ["cond.colour", "conductor", "value", "Chord colour", null, "Triads, as written, sevenths, ninths."],
     ["trk.density", "tracks", "value", "Density", "track", ""],
     ["trk.magnet", "tracks", "value", "Magnet", "track", ""],
+    ["trk.spread", "tracks", "value", "Spread", "track", "Notes away from the chord's centre (arp, bass, melody, free)."],
     ["trk.octave", "tracks", "value", "Octave", "track", ""],
     ["trk.transpose", "tracks", "value", "Transpose", "track", ""],
     ["trk.rotate", "tracks", "value", "Rotate", "track", ""],
