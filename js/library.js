@@ -15,7 +15,8 @@
 
   function newPane(index) {
     return { index: index, kind: null, name: "", handle: null, phrases: [], sel: [], anchor: -1, cursor: -1,
-             dirty: false, undo: [], redo: [], filter: "", status: "", statusKind: "" };
+             dirty: false, undo: [], redo: [], filter: "", status: "", statusKind: "",
+             empty: [] };      // categories added that have no phrases yet (a file only stores those with phrases)
   }
   var panes = [newPane(0), newPane(1)];
   var active = 0;               // the pane keys act on
@@ -28,7 +29,7 @@
     return !!(notes[a] && notes[b]);
   }
 
-  function snapshot(p) { return { phrases: p.phrases.slice(), sel: p.sel.slice(), cursor: p.cursor }; }
+  function snapshot(p) { return { phrases: p.phrases.slice(), sel: p.sel.slice(), cursor: p.cursor, empty: p.empty.slice() }; }
   function change(p, fn) {
     p.undo.push(snapshot(p));
     if (p.undo.length > 200) p.undo.shift();
@@ -40,7 +41,7 @@
     if (!from.length) return false;
     to.push(snapshot(p));
     var s = from.pop();
-    p.phrases = s.phrases; p.sel = s.sel; p.cursor = s.cursor; p.dirty = true;
+    p.phrases = s.phrases; p.sel = s.sel; p.cursor = s.cursor; p.empty = s.empty; p.dirty = true;
     return true;
   }
 
@@ -75,6 +76,34 @@
     });
   }
 
+  /* A category picked from a menu (or a new one typed in): resolves to its name, or null. */
+  function chooseCategory(text, yesLabel, choices, extra) {
+    var box = $("dialog");
+    return new Promise(function (resolve) {
+      box.textContent = "";
+      var select = el("select"), input = el("input");
+      choices.forEach(function (c) { var o = el("option", null, c); o.value = c; select.append(o); });
+      (extra || []).forEach(function (c) { var o = el("option", null, c[1]); o.value = c[0]; select.append(o); });
+      var neu = el("option", null, "A new category…"); neu.value = "\u0000new"; select.append(neu);
+      input.type = "text"; input.maxLength = PhraseLib.MAX_NAME; input.spellcheck = false; input.placeholder = "Its name"; input.hidden = true;
+      select.addEventListener("change", function () { input.hidden = select.value !== "\u0000new"; if (!input.hidden) input.focus(); });
+      var yes = el("button", "btn primary", yesLabel), no = el("button", "btn", "Cancel");
+      yes.type = no.type = "button";
+      function value() { return select.value === "\u0000new" ? input.value.trim() || null : select.value; }
+      function close(v) { box.hidden = true; document.removeEventListener("keydown", onKey, true); resolve(v); }
+      function onKey(e) {
+        if (e.key === "Escape") { e.preventDefault(); close(null); }
+        if (e.key === "Enter") { e.preventDefault(); close(value()); }
+      }
+      yes.addEventListener("click", function () { close(value()); });
+      no.addEventListener("click", function () { close(null); });
+      box.append(el("span", null, text), select, input, yes, no);
+      box.hidden = false;
+      document.addEventListener("keydown", onKey, true);
+      select.focus();
+    });
+  }
+
   // ---------------------------------------------------------------- files
 
   function openBytes(p, bytes, name, handle) {
@@ -83,7 +112,7 @@
     var go = function () {
       stop();
       Object.assign(p, newPane(p.index), { kind: lib.kind, name: name, handle: handle || null, phrases: lib.phrases });
-      setStatus(p, "Opened " + name + ": " + lib.phrases.length + " " + PhraseLib.KIND_NAMES[lib.kind].toLowerCase() + " in " + PhraseLib.styleRuns(lib.phrases).length + " styles.", "ok");
+      setStatus(p, "Opened " + name + ": " + lib.phrases.length + " " + PhraseLib.KIND_NAMES[lib.kind].toLowerCase() + " in " + PhraseLib.styleRuns(lib.phrases).length + " categories.", "ok");
       active = p.index;
       render();
     };
@@ -123,11 +152,14 @@
       change(p, function () { p.phrases = grouped; });
       p.sel = selected.map(function (x) { return grouped.indexOf(x); }).filter(function (i) { return i >= 0; }).sort(function (a, b) { return a - b; });
     }
+    var dropped = p.empty.filter(function (c) { return !p.phrases.some(function (x) { return x.style === c; }); });
+    p.empty = [];
     var bytes = PhraseLib.write(p.kind, p.phrases);
     var fileName = PhraseLib.FILE_NAMES[p.kind];
     function done(where) {
       p.dirty = false;
-      setStatus(p, "Saved " + p.phrases.length + " phrases to " + where + "." + (moved ? " Each style's phrases are together now." : ""), "ok");
+      setStatus(p, "Saved " + p.phrases.length + " phrases to " + where + "." + (moved ? " Each category's phrases are together now." : "") +
+        (dropped.length ? " Left out the empty " + (dropped.length === 1 ? "category " : "categories ") + dropped.join(", ") + "." : ""), "ok");
       render();
     }
     function download() {
@@ -291,29 +323,131 @@
     render();
   }
 
-  function setStyleOfSelected(p) {
+  /* The categories in their order: as the phrases have them, then the empty ones. */
+  function categories(p) {
+    var out = [];
+    p.phrases.forEach(function (x) { if (out.indexOf(x.style) < 0) out.push(x.style); });
+    p.empty.forEach(function (c) { if (out.indexOf(c) < 0) out.push(c); });
+    return out;
+  }
+  function categoryCount(p, c) { return p.phrases.filter(function (x) { return x.style === c; }).length; }
+
+  /* Moves phrases (indices) into a category: after its last phrase (at the end when it has none). */
+  function moveToCategory(p, indices, cat) {
+    var moving = indices.map(function (i) { return Object.assign(PhraseLib.clone(p.phrases[i]), { style: cat }); });
+    var rest = p.phrases.filter(function (x, i) { return indices.indexOf(i) < 0; });
+    var at = rest.length;
+    for (var i = rest.length - 1; i >= 0; i--) if (rest[i].style === cat) { at = i + 1; break; }
+    p.phrases = rest.slice(0, at).concat(moving, rest.slice(at));
+    p.empty = p.empty.filter(function (c) { return c !== cat; });
+    p.sel = moving.map(function (x, k) { return at + k; });
+    p.cursor = at; p.anchor = at;
+  }
+
+  function renamePhrase(p) {
+    if (p.sel.length !== 1) { setStatus(p, "Select one phrase to rename it."); return; }
+    var i = p.sel[0];
+    ask("Rename the phrase:", "Rename", true, p.phrases[i].title).then(function (name) {
+      name = (name || "").trim();
+      if (!name || name === p.phrases[i].title) return;
+      change(p, function () {
+        p.phrases = p.phrases.slice();
+        p.phrases[i] = Object.assign(PhraseLib.clone(p.phrases[i]), { title: name });
+      });
+      render();
+    });
+  }
+
+  function moveSelectedTo(p) {
     if (!p.sel.length) return;
     var current = p.phrases[p.sel[0]].style;
-    ask("Style for the " + p.sel.length + " selected:", "Set style", true, current).then(function (name) {
+    var cats = categories(p).filter(function (c) { return c !== current; });
+    chooseCategory("Move the " + (p.sel.length === 1 ? "phrase" : p.sel.length + " phrases") + " to:", "Move", cats).then(function (cat) {
+      if (!cat) return;
+      if (categories(p).indexOf(cat) < 0 && categories(p).length >= PhraseLib.MAX_STYLES) {
+        setStatus(p, "The Performer browses up to " + PhraseLib.MAX_STYLES + " categories; this library has them all.", "err");
+        return;
+      }
+      var n = p.sel.length;
+      change(p, function () { moveToCategory(p, p.sel, cat); });
+      setStatus(p, "Moved " + n + " to " + cat + ".", "ok");
+      render();
+    });
+  }
+
+  function addCategory(p) {
+    if (!p.kind) return;
+    if (categories(p).length >= PhraseLib.MAX_STYLES) {
+      setStatus(p, "The Performer browses up to " + PhraseLib.MAX_STYLES + " categories; this library has them all.", "err");
+      return;
+    }
+    ask("A new category:", "Add", true, "").then(function (name) {
       name = (name || "").trim();
       if (!name) return;
-      change(p, function () {
-        p.phrases = p.phrases.map(function (x, i) { return p.sel.indexOf(i) >= 0 ? Object.assign(PhraseLib.clone(x), { style: name }) : x; });
-      });
-      setStatus(p, "Style " + name + " set. Saving puts each style's phrases together.");
+      if (categories(p).indexOf(name) >= 0) { setStatus(p, "There is a category " + name + " already.", "err"); return; }
+      change(p, function () { p.empty = p.empty.concat([name]); });
+      setStatus(p, "Added " + name + ". Move phrases into it with Move to… (a category with no phrases isn't saved).", "ok");
       render();
     });
   }
 
   function renameStyle(p, style) {
-    ask("Rename the style " + style + " to:", "Rename", true, style).then(function (name) {
+    ask("Rename the category " + style + " to:", "Rename", true, style).then(function (name) {
       name = (name || "").trim();
       if (!name || name === style) return;
+      var merge = categories(p).indexOf(name) >= 0;
       change(p, function () {
         p.phrases = p.phrases.map(function (x) { return x.style === style ? Object.assign(PhraseLib.clone(x), { style: name }) : x; });
+        p.empty = p.empty.map(function (c) { return c === style ? name : c; }).filter(function (c, i, a) { return a.indexOf(c) === i; });
+        if (merge) p.phrases = PhraseLib.groupStyles(p.phrases);
       });
+      setStatus(p, merge ? style + " joined " + name + "." : "Renamed " + style + " to " + name + ".", "ok");
       render();
     });
+  }
+
+  function deleteCategory(p, style) {
+    var n = categoryCount(p, style);
+    if (!n) {
+      change(p, function () { p.empty = p.empty.filter(function (c) { return c !== style; }); });
+      setStatus(p, "Deleted the empty category " + style + ".");
+      render();
+      return;
+    }
+    var others = categories(p).filter(function (c) { return c !== style; });
+    var DELETE = "\u0000delete";
+    chooseCategory("Delete the category " + style + ". Its " + n + " phrases:", "Delete category",
+      others.map(function (c) { return c; }), [[DELETE, "Delete them too"]]).then(function (target) {
+      if (!target) return;
+      var idx = [];
+      p.phrases.forEach(function (x, i) { if (x.style === style) idx.push(i); });
+      change(p, function () {
+        if (target === DELETE) {
+          p.phrases = p.phrases.filter(function (x) { return x.style !== style; });
+          p.sel = []; p.cursor = -1; p.anchor = -1;
+        } else {
+          moveToCategory(p, idx, target);
+        }
+        p.empty = p.empty.filter(function (c) { return c !== style; });
+      });
+      setStatus(p, target === DELETE ? "Deleted " + style + " and its " + n + " phrases. " + (isMac ? "⌘" : "Ctrl+") + "Z brings them back." :
+        "Deleted " + style + "; its " + n + " phrases are in " + target + ".", "ok");
+      render();
+    });
+  }
+
+  /* A category one place up or down in the library (with all its phrases). */
+  function moveCategory(p, style, d) {
+    var cats = categories(p), i = cats.indexOf(style), j = i + d;
+    if (i < 0 || j < 0 || j >= cats.length) return;
+    cats[i] = cats[j]; cats[j] = style;
+    change(p, function () {
+      var selected = p.sel.map(function (k) { return p.phrases[k]; });
+      p.phrases = cats.reduce(function (out, c) { return out.concat(p.phrases.filter(function (x) { return x.style === c; })); }, []);
+      p.empty = cats.filter(function (c) { return p.empty.indexOf(c) >= 0; });
+      p.sel = selected.map(function (x) { return p.phrases.indexOf(x); }).sort(function (a, b) { return a - b; });
+    });
+    render();
   }
 
   function undo(p) { if (restore(p, p.undo, p.redo)) render(); }
@@ -514,12 +648,14 @@
         '<button class="btn small" data-act="copy" type="button">Copy</button>' +
         '<button class="btn small" data-act="cut" type="button">Cut</button>' +
         '<button class="btn small" data-act="paste" type="button">Paste</button>' +
-        '<button class="btn small" data-act="dup" type="button">Duplicate</button>' +
+        '<button class="btn small" data-act="dup" type="button" title="Duplicate (⌘D)">Dup</button>' +
         '<button class="btn small" data-act="up" type="button" aria-label="Move up">↑</button>' +
         '<button class="btn small" data-act="down" type="button" aria-label="Move down">↓</button>' +
-        '<button class="btn small" data-act="style" type="button">Style…</button>' +
+        '<button class="btn small" data-act="rename" type="button">Rename…</button>' +
+        '<button class="btn small" data-act="moveto" type="button">Move to…</button>' +
         '<button class="btn small danger" data-act="del" type="button">Delete</button></div>' +
-        '<div class="lfilter"><input type="search" placeholder="Find a name or style" spellcheck="false"><span class="help lcount"></span></div>' +
+        '<details class="lcats"><summary><span class="lcats-title">Categories</span></summary><div class="lcats-body"></div></details>' +
+        '<div class="lfilter"><input type="search" placeholder="Find a name or category" spellcheck="false"><span class="help lcount"></span></div>' +
         '<ol class="llist" tabindex="0"></ol>' +
         '<p class="status lstatus" role="status" aria-live="polite"></p>';
       root.append(s);
@@ -527,7 +663,7 @@
         open: function () { openFile(p); }, save: function () { saveFile(p); }, play: function () { playCursor(p); },
         copy: function () { copy(p, false); }, cut: function () { copy(p, true); }, paste: function () { paste(p); },
         dup: function () { duplicate(p); }, up: function () { moveSelected(p, -1); }, down: function () { moveSelected(p, 1); },
-        style: function () { setStyleOfSelected(p); }, del: function () { removeSelected(p); }, undo: function () { undo(p); }, redo: function () { redo(p); },
+        rename: function () { renamePhrase(p); }, moveto: function () { moveSelectedTo(p); }, addcat: function () { addCategory(p); }, del: function () { removeSelected(p); }, undo: function () { undo(p); }, redo: function () { redo(p); },
       };
       s.addEventListener("click", function (e) {
         var b = e.target.closest("[data-act]");
@@ -554,7 +690,7 @@
     file.classList.toggle("dirty", p.dirty);
     s.classList.toggle("active", p.index === active);
     var runs = p.kind ? PhraseLib.styleRuns(PhraseLib.groupStyles(p.phrases)) : [];
-    s.querySelector(".lcount").textContent = p.kind ? p.phrases.length + " phrases · " + runs.length + "/" + PhraseLib.MAX_STYLES + " styles" + (p.sel.length > 1 ? " · " + p.sel.length + " selected" : "") : "";
+    s.querySelector(".lcount").textContent = p.kind ? p.phrases.length + " phrases · " + runs.length + "/" + PhraseLib.MAX_STYLES + " categories" + (p.sel.length > 1 ? " · " + p.sel.length + " selected" : "") : "";
   }
   function renderPaneStatus(p) {
     var st = paneEl(p).querySelector(".lstatus");
@@ -574,6 +710,7 @@
     var s = paneEl(p), list = s.querySelector(".llist");
     list.textContent = "";
     if (!p.kind) {
+      renderCategories(p);
       var empty = el("li", "lempty");
       empty.append(el("span", null, "Open a library from the card's LIBRARY folder, or drop a .LIB file here."));
       list.append(empty);
@@ -586,9 +723,9 @@
         var head = el("li", "lstyle");
         var name = el("button", "lstyle-name", x.style);
         name.type = "button";
-        name.title = "Select the style (double-click: rename it)";
+        name.title = "Select the category (double-click: rename it)";
         var again = seen[x.style];
-        if (again) name.title = "This style also comes earlier; saving puts its phrases together";
+        if (again) name.title = "This category also comes earlier; saving puts its phrases together";
         name.addEventListener("click", function (e) { selectStyle(p, x.style, e); });
         name.addEventListener("dblclick", function () { renameStyle(p, x.style); });
         head.append(name);
@@ -606,10 +743,20 @@
       }
       li.addEventListener("mousedown", function (e) { if (e.shiftKey || e.metaKey || e.ctrlKey) e.preventDefault(); });
       li.addEventListener("click", function (e) { clickRow(p, i, e); });
-      li.addEventListener("dblclick", function () { stop(); play(p.kind, x); });
+      li.addEventListener("dblclick", function () { renamePhrase(p); });
       list.append(li);
     });
-    if (!vis.length) list.append(el("li", "lempty", "Nothing matches."));
+    if (!vis.length && !p.empty.length) list.append(el("li", "lempty", "Nothing matches."));
+    // the categories added that have no phrases yet
+    p.empty.forEach(function (c) {
+      var head = el("li", "lstyle");
+      var name = el("button", "lstyle-name", c); name.type = "button"; name.title = "Double-click: rename it";
+      name.addEventListener("dblclick", function () { renameStyle(p, c); });
+      head.append(name, el("span", "pill", "empty"));
+      list.append(head);
+      list.append(el("li", "lempty", "No phrases yet: select some and use Move to…"));
+    });
+    renderCategories(p);
     // the small previews, once laid out
     requestAnimationFrame(function () {
       list.querySelectorAll(".lrow").forEach(function (li) {
@@ -619,13 +766,43 @@
     });
   }
 
+  function renderCategories(p) {
+    var s = paneEl(p), body = s.querySelector(".lcats-body"), cats = p.kind ? categories(p) : [];
+    s.querySelector(".lcats").hidden = !p.kind;
+    s.querySelector(".lcats-title").textContent = "Categories (" + cats.length + "/" + PhraseLib.MAX_STYLES + ")";
+    body.textContent = "";
+    cats.forEach(function (c, k) {
+      var row = el("div", "lcat");
+      var name = el("button", "lcat-name", c); name.type = "button"; name.title = "Select its phrases";
+      name.addEventListener("click", function (e) { selectStyle(p, c, e); });
+      row.append(name, el("span", "help", String(categoryCount(p, c))));
+      [["↑", -1, "Move the category up"], ["↓", 1, "Move the category down"]].forEach(function (m) {
+        var b = el("button", "btn small", m[0]); b.type = "button"; b.title = m[2]; b.setAttribute("aria-label", m[2]);
+        b.disabled = (m[1] < 0 && k === 0) || (m[1] > 0 && k === cats.length - 1);
+        b.addEventListener("click", function () { active = p.index; moveCategory(p, c, m[1]); });
+        row.append(b);
+      });
+      var rn = el("button", "btn small", "Rename"); rn.type = "button";
+      rn.addEventListener("click", function () { active = p.index; renameStyle(p, c); });
+      var del = el("button", "btn small danger", "Delete"); del.type = "button";
+      del.addEventListener("click", function () { active = p.index; deleteCategory(p, c); });
+      row.append(rn, del);
+      body.append(row);
+    });
+    var add = el("button", "btn small", "+ Category"); add.type = "button";
+    add.disabled = cats.length >= PhraseLib.MAX_STYLES;
+    add.addEventListener("click", function () { active = p.index; addCategory(p); });
+    body.append(add);
+  }
+
   function renderToolbars() {
     panes.forEach(function (p) {
       var s = paneEl(p), has = !!p.kind, sel = p.sel.length > 0;
       s.classList.toggle("active", p.index === active);
       var set = function (act, on) { var b = s.querySelector('[data-act="' + act + '"]'); if (b) b.disabled = !on; };
       set("save", has && p.phrases.length > 0);
-      ["copy", "cut", "dup", "del", "up", "down", "style"].forEach(function (a) { set(a, has && sel); });
+      ["copy", "cut", "dup", "del", "up", "down", "moveto"].forEach(function (a) { set(a, has && sel); });
+      set("rename", has && p.sel.length === 1);
       set("play", has && (sel || p.cursor >= 0));
       set("paste", has && !!clipboard && compatible(clipboard.kind, p.kind));
       set("undo", p.undo.length > 0); set("redo", p.redo.length > 0);
@@ -684,8 +861,13 @@
     name.addEventListener("input", function () { var v = this.value; editPhrase(d.p, d.i, function (q) { q.title = v; }, "title"); head.querySelector("h2").textContent = "AB"[d.p.index] + " · " + pad3(d.i) + "  " + v; });
     fields.append(field("Name", name));
     var style = el("input"); style.type = "text"; style.maxLength = PhraseLib.MAX_NAME; style.value = x.style; style.spellcheck = false;
-    style.addEventListener("change", function () { var v = this.value.trim(); if (v) editPhrase(d.p, d.i, function (q) { q.style = v; }, "style"); renderPaneList(d.p); });
-    fields.append(field("Style", style));
+    style.addEventListener("change", function () {
+      var v = this.value.trim();
+      if (!v || v === d.p.phrases[d.i].style) return;
+      change(d.p, function () { moveToCategory(d.p, [d.i], v); });
+      render();
+    });
+    fields.append(field("Category", style));
     var bpm = el("input"); bpm.type = "number"; bpm.min = 40; bpm.max = 255; bpm.value = x.bpm;
     bpm.addEventListener("change", function () { var v = Math.max(40, Math.min(255, +this.value || 120)); editPhrase(d.p, d.i, function (q) { q.bpm = v; }, "bpm"); });
     var f = field("Tempo", bpm); f.classList.add("small"); fields.append(f);
@@ -854,6 +1036,7 @@
     else if (mod && k === "s") saveFile(p);
     else if (k === "backspace" || k === "delete") removeSelected(p);
     else if (k === " ") playCursor(p);
+    else if (k === "enter") renamePhrase(p);
     else if (e.altKey && k === "arrowup") moveSelected(p, -1);
     else if (e.altKey && k === "arrowdown") moveSelected(p, 1);
     else if (k === "arrowup") moveCursor(p, -1, e.shiftKey);

@@ -40,15 +40,19 @@ The **Library** page (`library.html`) tidies the Conducting Performer's phrase l
   one (SPACE, or double-click) with a simple synth at its tempo.
 - **Select several:** click, SHIFT + click a range, ⌘/Ctrl + click one more, click a style for all
   of it, ⌘A everything.
-- **Edit:** copy, cut, paste (after the last selected row, into its style), duplicate, delete, move
-  up and down, set or rename a style, with undo and redo. Bass lines and melodies paste into each
+- **Edit:** copy, cut, paste (after the last selected row, into its category), duplicate, delete,
+  move up and down, rename (⏎ or double-click), with undo and redo.
+- **Categories** (the Performer's STYLE): Move to… puts the selected phrases into another category or
+  a new one; the Categories list adds, renames, deletes (moving the phrases elsewhere or deleting them
+  too) and reorders them. Renaming one to another's name joins the two; a category with no phrases
+  isn't saved. Bass lines and melodies paste into each
   other's library; drum patterns and progressions only into their own kind.
-- **Phrase fields:** name, style, tempo, swing and key.
+- **Phrase fields:** name, category, tempo, swing and key.
 - **Progressions:** a chord editor: root, type (the simple types first), length, voicing (inversion),
   move, duplicate, delete, add, transpose; a chord's voicing as played in the MIDI file is kept until
   its root or type changes.
-- **Saving** puts each style's phrases together (the Performer browses styles as runs) and checks the
-  16-style limit. A phrase nobody edited is written back byte for byte.
+- **Saving** puts each category's phrases together (the Performer browses them as runs) and checks
+  the limit of 16 categories. A phrase nobody edited is written back byte for byte.
 
 Pattern and drum chain entries remember the number of the phrase they were loaded from, and SAVE on
 S1 writes an edited pattern back to that number: after moving or deleting phrases, load an entry from
