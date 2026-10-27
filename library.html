@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Performer Library Manager</title>
+<meta name="description" content="Tidy the Conducting Performer's phrase libraries: preview bass lines, melodies, drum patterns and progressions, select several, copy, paste, move and delete within a library and between two, and edit progressions chord by chord.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Conducting Performer · phrase libraries</div>
+    <h1>Library Manager</h1>
+    <p class="lede">Open the libraries from the Performer's card (<code>LIBRARY/BASS.LIB</code>, <code>MELODY.LIB</code>, <code>DRUMS.LIB</code>, <code>PROGS.LIB</code>) to preview, sort and tidy them. Open a second library in the right-hand pane to copy between the two. Nothing is written until you save.</p>
+    <nav class="tabs" aria-label="Pages">
+      <a class="tab" href="index.html#kits">Kits</a>
+      <a class="tab" href="index.html#patterns">Patterns</a>
+      <a class="tab on" href="library.html" aria-current="page">Library</a>
+      <a class="tab" href="controller.html">Controller</a>
+    </nav>
+  </header>
+
+  <div class="lpanes" id="panes"></div>
+
+  <section class="ldetail" id="detail" aria-label="Phrase" hidden></section>
+
+  <details class="lkeys">
+    <summary>Keys and tips</summary>
+    <div class="lkeys-body">
+      <p><b>Select:</b> click a row; SHIFT + click a range; ⌘ (Ctrl) + click to add or remove one; click a style's name for all of it; ⌘A for everything (in the pane you clicked last).</p>
+      <p><b>Edit:</b> ⌘C copy · ⌘X cut · ⌘V paste after the last selected row (into that row's style; with nothing selected, at the end) · ⌘D duplicate · ⌫ delete · ⌥↑ ⌥↓ move · ↑ ↓ (SHIFT) the selection · ⌘Z undo · SHIFT ⌘Z redo · SPACE play / stop.</p>
+      <p><b>Between libraries:</b> bass lines and melodies paste into each other's library; drum patterns and progressions only into their own kind.</p>
+      <p><b>On the Performer:</b> the library is browsed style by style, so saving puts each style's phrases together (where the style first appears); up to 16 styles. Pattern and drum chain entries remember the number of the phrase they were loaded from (<code>LIB 012</code>), and SAVE on S1 writes an edited pattern back to that number: after phrases are moved or deleted, load an entry from the library again before saving it back.</p>
+    </div>
+  </details>
+
+  <div class="confirm lconfirm" id="dialog" hidden></div>
+
+  <footer class="foot">
+    <a href="https://github.com/Radio32/Performer-Library-manager">Source</a> ·
+    <a href="https://github.com/Radio32/Conducting-Performer">Conducting Performer</a>
+  </footer>
+</div>
+
+<script src="js/phraselib.js"></script>
+<script src="js/library.js"></script>
+</body>
+</html>

@@ -29,6 +29,31 @@ Settings such as pitch, decay and drive are made on the NT and saved in its pres
 manager writes only standard WAV files with the plug-in's naming, so it keeps working as the
 NT's firmware changes.
 
+## Library
+
+The **Library** page (`library.html`) tidies the Conducting Performer's phrase libraries: `BASS.LIB`,
+`MELODY.LIB`, `DRUMS.LIB` and `PROGS.LIB` in the card's `LIBRARY` folder.
+
+- **Two panes:** open a library in each (or drop the file on a pane) to copy between them, e.g. a new
+  build of the library on the right and the card's on the left.
+- **Preview:** every phrase with a small piano roll or drum grid, progressions as their chords; play
+  one (SPACE, or double-click) with a simple synth at its tempo.
+- **Select several:** click, SHIFT + click a range, ⌘/Ctrl + click one more, click a style for all
+  of it, ⌘A everything.
+- **Edit:** copy, cut, paste (after the last selected row, into its style), duplicate, delete, move
+  up and down, set or rename a style, with undo and redo. Bass lines and melodies paste into each
+  other's library; drum patterns and progressions only into their own kind.
+- **Phrase fields:** name, style, tempo, swing and key.
+- **Progressions:** a chord editor: root, type (the simple types first), length, voicing (inversion),
+  move, duplicate, delete, add, transpose; a chord's voicing as played in the MIDI file is kept until
+  its root or type changes.
+- **Saving** puts each style's phrases together (the Performer browses styles as runs) and checks the
+  16-style limit. A phrase nobody edited is written back byte for byte.
+
+Pattern and drum chain entries remember the number of the phrase they were loaded from, and SAVE on
+S1 writes an edited pattern back to that number: after moving or deleting phrases, load an entry from
+the library again before saving it back.
+
 ## Patterns
 
 The second page edits the **Performer's drum patterns**, in its library file `LIBRARY/DRUMS.LIB`:
