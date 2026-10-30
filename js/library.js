@@ -477,66 +477,29 @@
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
-  function hz(pitch) { return 440 * Math.pow(2, (pitch - 69) / 12); }
-  function tone(c, out, t, dur, pitch, gain, type) {
-    var o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
-    o.type = type || "sawtooth"; o.frequency.value = hz(pitch);
-    f.type = "lowpass"; f.frequency.value = Math.min(6000, hz(pitch) * 6);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(gain, t + 0.005);
-    g.gain.setValueAtTime(gain, t + Math.max(0.01, dur - 0.03));
-    g.gain.linearRampToValueAtTime(0, t + dur);
-    o.connect(f); f.connect(g); g.connect(out);
-    o.start(t); o.stop(t + dur + 0.02);
-  }
-  var noiseBuf = null;
-  function drum(c, out, t, voice, accent) {
-    var v = accent ? 1 : 0.6, g = c.createGain();
-    g.connect(out);
-    if (voice === "BD" || voice === "P1" || voice === "P2") {
-      var o = c.createOscillator(), start = { BD: 150, P1: 220, P2: 330 }[voice], end = { BD: 45, P1: 110, P2: 180 }[voice];
-      o.frequency.setValueAtTime(start, t); o.frequency.exponentialRampToValueAtTime(end, t + 0.12);
-      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + (voice === "BD" ? 0.35 : 0.25));
-      o.connect(g); o.start(t); o.stop(t + 0.4);
-      return;
-    }
-    if (!noiseBuf) {
-      noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
-      var d = noiseBuf.getChannelData(0);
-      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    }
-    var n = c.createBufferSource(), f = c.createBiquadFilter();
-    n.buffer = noiseBuf;
-    var len = { SNR: 0.18, CLP: 0.12, CHH: 0.05, OHH: 0.3, CYM: 0.8 }[voice] || 0.1;
-    f.type = voice === "SNR" || voice === "CLP" ? "bandpass" : "highpass";
-    f.frequency.value = { SNR: 1800, CLP: 1200, CHH: 7000, OHH: 6500, CYM: 5000 }[voice] || 3000;
-    g.gain.setValueAtTime(v * 0.7, t); g.gain.exponentialRampToValueAtTime(0.001, t + len);
-    n.connect(f); f.connect(g); n.start(t); n.stop(t + len + 0.05);
-  }
-
   /* Plays a phrase once; the detail preview shows where it is. */
   function play(kind, x) {
     stop();
     var c = audio(), out = c.createGain();
-    out.gain.value = 0.25; out.connect(c.destination);
+    out.gain.value = 0.7; out.connect(c.destination);
     var stepSec = 60 / Math.max(40, x.bpm || 120) / 4, t0 = c.currentTime + 0.05, total = 0;
     if (kind === "progs") {
       var at = 0;
       PhraseLib.readSlots(x).forEach(function (s) {
         var dur = s.steps * stepSec;
-        PhraseLib.chordPitches(s).forEach(function (pitch, k) { tone(c, out, t0 + at, dur, pitch, k === 0 ? 0.35 : 0.18, k === 0 ? "triangle" : "sawtooth"); });
+        PhraseLib.chordPitches(s).forEach(function (pitch, k) { PDSynth.chordTone(c, out, t0 + at, dur, pitch, k); });
         at += dur;
       });
       total = at;
     } else if (kind === "drums") {
       var d = PhraseLib.readLanes(x), steps = x.bars * 16;
       PhraseLib.DRUM_VOICES.forEach(function (v) {
-        for (var s = 0; s < steps; s++) if (d.lanes[v][s]) drum(c, out, t0 + s * stepSec, v, d.accents[v][s]);
+        for (var s = 0; s < steps; s++) if (d.lanes[v][s]) PDSynth.drum(c, out, t0 + s * stepSec, v, d.accents[v][s]);
       });
       total = steps * stepSec;
     } else {
       PhraseLib.readNotes(x).forEach(function (n) {
-        tone(c, out, t0 + n.start / 8 * stepSec, Math.max(0.04, n.length / 8 * stepSec), PhraseLib.notePitch(x, n), n.accent ? 0.45 : 0.32);
+        (kind === "bass" ? PDSynth.bass : PDSynth.lead)(c, out, t0 + n.start / 8 * stepSec, Math.max(0.04, n.length / 8 * stepSec), PhraseLib.notePitch(x, n), n.accent);
       });
       total = x.bars * 16 * stepSec;
     }
@@ -612,11 +575,11 @@
       var notes = PhraseLib.readNotes(x);
       if (notes.length) {
         var ps = notes.map(function (n) { return n.rel; }), lo = Math.min.apply(null, ps), hi = Math.max.apply(null, ps);
-        var span = Math.max(12, hi - lo + 1), nh = Math.max(1.5, h / span);
+        var span = Math.max(12, hi - lo + 1), nh = Math.max(3, h / span);
         notes.forEach(function (n) {
           g.fillStyle = n.accent ? acc : fg;
           var y = h - (n.rel - lo + 1) / span * h;
-          g.fillRect(n.start / 8 / steps * w, y, Math.max(1.5, n.length / 8 / steps * w - 0.5), Math.min(nh, h / 6));
+          g.fillRect(n.start / 8 / steps * w, y, Math.max(2, n.length / 8 / steps * w - 0.5), Math.min(nh, h / 5));
         });
       }
     }
@@ -961,8 +924,8 @@
         var hear = el("button", "btn small", "▶"); hear.type = "button"; hear.setAttribute("aria-label", "Hear the chord");
         hear.addEventListener("click", function () {
           stop();
-          var ac = audio(), out = ac.createGain(); out.gain.value = 0.25; out.connect(ac.destination);
-          PhraseLib.chordPitches(s).forEach(function (pitch, j) { tone(ac, out, ac.currentTime + 0.02, 1.2, pitch, j === 0 ? 0.35 : 0.18, j === 0 ? "triangle" : "sawtooth"); });
+          var ac = audio(), out = ac.createGain(); out.gain.value = 0.7; out.connect(ac.destination);
+          PhraseLib.chordPitches(s).forEach(function (pitch, j) { PDSynth.chordTone(ac, out, ac.currentTime + 0.02, 1.2, pitch, j); });
         });
         top.append(hear);
         c.append(top);
@@ -1050,6 +1013,11 @@
     if (panes.some(function (p) { return p.dirty; })) { e.preventDefault(); e.returnValue = ""; }
   });
   window.addEventListener("resize", function () { render(); });
+
+  // for the browser console and the tests: open library bytes in a pane
+  window.PDLibrary = {
+    open: function (pane, bytes, name) { openBytes(panes[pane], bytes, name || "LIBRARY.LIB", null); },
+  };
 
   buildPanes();
   render();

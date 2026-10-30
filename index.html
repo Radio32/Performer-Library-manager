@@ -107,7 +107,14 @@
         <input id="midiPick" type="file" accept=".mid,.midi,audio/midi" multiple hidden>
         <button class="btn primary" id="libSave" type="button" disabled>Save library</button>
       </div>
-      <p class="help libhelp">The Performer's drum patterns are in <code>LIBRARY/DRUMS.LIB</code> on its card. Pattern <b>N</b> plays kit <b>N</b>: the kit track sends program change N when it starts. New and imported patterns go at the end, so the numbers of the others never change.</p>
+      <div class="libnote libhelp">
+        <p><b>One drum library per card.</b> The Performer reads its drum patterns from one file, <code>LIBRARY/DRUMS.LIB</code>. There can't be two drum libraries on the same card.</p>
+        <ul>
+          <li><b>Open DRUMS.LIB…</b> to change the card's library: your edits, new patterns and imports go into it, and <b>Save library</b> writes over that file.</li>
+          <li><b>New library</b> starts a completely new, empty one. None of the card's patterns come with it, and saving it as <code>DRUMS.LIB</code> on the card <b>replaces</b> the library there. Keep a copy of the old file if you may want it back.</li>
+        </ul>
+        <p>Pattern <b>N</b> plays kit <b>N</b>: the kit track sends program change N when it starts. New and imported patterns go at the end, so the numbers of the others never change.</p>
+      </div>
     </section>
 
     <div class="patterns">
@@ -139,6 +146,7 @@
           <div class="field kitsrc">
             <label for="kitSource">Plays with</label>
             <select id="kitSource">
+              <option value="synth" selected>The built-in drum machine (no samples needed)</option>
               <option value="match">The matching kit from a kits folder</option>
               <option value="kits">The kit on the Kits page</option>
             </select>
@@ -172,6 +180,7 @@
 <script src="js/naming.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/drumlib.js"></script>
+<script src="js/synth.js"></script>
 <script src="js/app.js"></script>
 <script src="js/patterns.js"></script>
 </body>

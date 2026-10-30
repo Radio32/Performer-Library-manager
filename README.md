@@ -37,7 +37,8 @@ The **Library** page (`library.html`) tidies the Conducting Performer's phrase l
 - **Two panes:** open a library in each (or drop the file on a pane) to copy between them, e.g. a new
   build of the library on the right and the card's on the left.
 - **Preview:** every phrase with a small piano roll or drum grid, progressions as their chords; play
-  one (SPACE, or double-click) with a simple synth at its tempo.
+  one (SPACE, or double-click) at its tempo with the built-in sounds: a drum machine in the
+  manner of the 80s classics, a filtered bass, a lead and soft chords.
 - **Select several:** click, SHIFT + click a range, ⌘/Ctrl + click one more, click a style for all
   of it, ⌘A everything.
 - **Edit:** copy, cut, paste (after the last selected row, into its category), duplicate, delete,
@@ -66,9 +67,9 @@ The second page edits the **Performer's drum patterns**, in its library file `LI
   edit it on an eight-lane grid: BD, SNR, CHH, OHH, CLP, P1, P2, CYM, up to 4 bars of 1/16.
   Click a step to set it, SHIFT + click (or right click) for an accent, drag to paint. Name,
   style, length, tempo and swing are there too.
-- **Play** a pattern with its kit: open a folder of kits (like `BY KIT`) and pattern N plays kit
-  N, the way the Performer's kit track picks it by program change. Or play it with the kit on
-  the Kits page. The Performer's swing, its velocities (90, accents 127) and the closed hi-hat
+- **Play** a pattern with the built-in drum machine (no samples needed), or with its kit: open a
+  folder of kits (like `BY KIT`) and pattern N plays kit N, the way the Performer's kit track
+  picks it by program change. Or play it with the kit on the Kits page. The Performer's swing, its velocities (90, accents 127) and the closed hi-hat
   cutting the open one are all there.
 - **Import MIDI:** a `.mid` file's drum notes go to the lanes. The pattern pack's notes (60–67),
   General MIDI drums and the `loops` layout are recognised; longer files become several 4-bar

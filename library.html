@@ -24,6 +24,14 @@
     </nav>
   </header>
 
+  <div class="libnote lnote">
+    <p><b>One library of each kind per card.</b> The Performer reads one file per kind: <code>BASS.LIB</code>, <code>MELODY.LIB</code>, <code>DRUMS.LIB</code> and <code>PROGS.LIB</code> in its <code>LIBRARY</code> folder. Two libraries of the same kind can't be on the same card.</p>
+    <ul>
+      <li><b>Open…</b> a file from the card to change that library: <b>Save</b> writes your changes over the same file.</li>
+      <li>To bring phrases from another library file (a backup, a friend's), open it in the second pane and copy them across into the card's library. Saving the other file to the card under the same name would <b>replace</b> the card's library, not add to it.</li>
+    </ul>
+  </div>
+
   <div class="lpanes" id="panes"></div>
 
   <section class="ldetail" id="detail" aria-label="Phrase" hidden></section>
@@ -48,6 +56,7 @@
 </div>
 
 <script src="js/phraselib.js"></script>
+<script src="js/synth.js"></script>
 <script src="js/library.js"></script>
 </body>
 </html>

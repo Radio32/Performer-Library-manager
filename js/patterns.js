@@ -89,7 +89,7 @@
     lib = { name: "DRUMS.LIB (new)", handle: null, patterns: [DrumLib.emptyPattern("Pattern 000", "User")], dirty: true };
     select(0);
     renderLibrary();
-    setStatus("A new library with one empty pattern. Save it as LIBRARY/DRUMS.LIB on the Performer's card (it replaces the patterns there).");
+    setStatus("A new, empty library. Saved as LIBRARY/DRUMS.LIB on the Performer's card, it replaces the drum library there.");
   }
 
   function saveLibrary() {
@@ -306,7 +306,7 @@
     });
     var n = Object.keys(kitsFolder).length;
     setStatus(n ? n + " kits found. Pattern N plays kit N." : "No kit folders (NNN-Name) in that folder.", n ? "ok" : "err");
-    $("kitSource").value = "match";
+    $("kitSource").value = n ? "match" : $("kitSource").value;
     updateKitLabel();
   }
 
@@ -326,6 +326,7 @@
 
   // the sounds for the selected pattern: { voice: AudioBuffer } and a label
   function kitFor(number) {
+    if ($("kitSource").value === "synth") return Promise.resolve({ buffers: {}, synth: true, label: "the built-in drum machine" });
     if ($("kitSource").value === "kits") {
       var sounds = window.PDKits ? window.PDKits.sounds() : {}, out = {};
       Object.keys(sounds).forEach(function (v) { out[v] = toBuffer(sounds[v]); });
@@ -354,7 +355,9 @@
   function updateKitLabel() {
     var label = $("kitPlaying");
     if (sel < 0) { label.textContent = ""; return; }
-    if ($("kitSource").value === "kits") {
+    if ($("kitSource").value === "synth") {
+      label.textContent = "A built-in kit in the manner of an 80s drum machine. For the real sounds: a kits folder or the Kits page.";
+    } else if ($("kitSource").value === "kits") {
       var n = window.PDKits ? Object.keys(window.PDKits.sounds()).length : 0;
       label.textContent = n ? "Plays " + window.PDKits.label() + " (" + n + " sounds)" : "The Kits page has no sounds yet.";
     } else if (!Object.keys(kitsFolder).length) {
@@ -378,6 +381,7 @@
   }
 
   function hit(v, time, gain) {
+    if (kit.synth) { PDSynth.drum(actx, out, time, v, Math.min(1, gain * 1.25)); return; }
     var buf = kit.buffers[v];
     if (!buf) return;
     var src = actx.createBufferSource(), g = actx.createGain();
@@ -418,7 +422,7 @@
     kitFor(sel).then(function (k) {
       kit = k;
       updateKitLabel();
-      if (!Object.keys(k.buffers).length) setStatus($("kitSource").value === "kits" ? "No sounds on the Kits page: add some there first." : "No kit to play: open a kits folder, or choose the Kits page.", "err");
+      if (!k.synth && !Object.keys(k.buffers).length) setStatus($("kitSource").value === "kits" ? "No sounds on the Kits page: add some there first." : "No kit to play: open a kits folder, or choose the Kits page.", "err");
       else setStatus("Playing pattern " + pad3(sel) + " with " + k.label + ".");
       playing = true;
       nextStep = 0; pending = []; hats = {};
@@ -444,7 +448,7 @@
     if (actx.state === "suspended") actx.resume();
     kitFor(sel).then(function (k) {
       kit = k;
-      if (!k.buffers[v]) { setStatus("No " + v + " sound in " + (k.label || "the kit") + ".", "err"); return; }
+      if (!k.synth && !k.buffers[v]) { setStatus("No " + v + " sound in " + (k.label || "the kit") + ".", "err"); return; }
       hit(v, actx.currentTime + 0.01, 1);
     });
   }
@@ -492,7 +496,10 @@
       if (f) f.arrayBuffer().then(function (b) { openBytes(new Uint8Array(b), f.name, null); });
     });
     $("libNew").addEventListener("click", function () {
-      if (lib.dirty) askConfirm("The open library has changes that aren't saved. Start a new one anyway?", "New library").then(function (ok) { if (ok) newLibrary(); });
+      // a new library is a whole new DRUMS.LIB: say so before it starts
+      var message = "A new library starts completely empty: none of the patterns open now come with it. Saved to the card as DRUMS.LIB, it replaces the drum library there (a card has one). To add patterns to the card's library, open its DRUMS.LIB instead.";
+      if (lib.dirty) message += " The open library also has changes that aren't saved.";
+      if (lib.patterns.length || lib.dirty) askConfirm(message, "Start a new library").then(function (ok) { if (ok) newLibrary(); });
       else newLibrary();
     });
     $("libSave").addEventListener("click", saveLibrary);
