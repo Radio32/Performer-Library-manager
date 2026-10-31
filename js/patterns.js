@@ -223,6 +223,29 @@
   // ---------------------------------------------------------------- the grid
 
   var paint = null;     // { mode: "on" | "off" | "accent", voice } while dragging
+  var mark = null;      // the marked steps: { p, v0, v1 (voice rows), s0, s1 }
+  var marking = null;   // { vi, s }: where the mark's drag started
+  var markMode = false; // MARK on: a plain drag marks instead of painting
+  var clip = null;      // copied steps: { rows, cols, cells: [[state]] }
+  var undo = [];        // the grid's edits: { p, lanes } as they were
+
+  function cloneLanes(p) { return JSON.parse(JSON.stringify(p.lanes)); }
+  function pushUndo(p) {
+    undo.push({ p: p, lanes: cloneLanes(p) });
+    if (undo.length > 100) undo.shift();
+    renderMarkBar();
+  }
+  function undoEdit() {
+    var u = undo.pop();
+    renderMarkBar();
+    if (!u) return;
+    var i = lib.patterns.indexOf(u.p);
+    if (i < 0) { undoEdit(); return; }
+    u.p.lanes = u.lanes;
+    markDirty();
+    if (i !== sel) select(i); else renderGrid();
+    setStatus("Undone.");
+  }
 
   function cellState(p, v, s) { var l = p.lanes[v]; return l.gates[s] ? (l.accents[s] ? "accent" : "on") : "off"; }
   function setCell(p, v, s, mode) {
@@ -236,7 +259,7 @@
     grid.textContent = "";
     if (!p) { grid.append(el("p", "help", "Open the Performer's DRUMS.LIB, make a new library, or import a MIDI file.")); return; }
     grid.style.setProperty("--steps", p.steps);
-    VOICES.forEach(function (v) {
+    VOICES.forEach(function (v, vi) {
       var row = el("div", "grow");
       row.setAttribute("role", "row");
       var name = el("button", "gvoice", v);
@@ -253,6 +276,13 @@
           c.setAttribute("aria-label", v + " step " + (s + 1));
           c.addEventListener("pointerdown", function (e) {
             e.preventDefault();
+            if (markMode || e.altKey) {
+              marking = { vi: vi, s: s };
+              mark = { p: p, v0: vi, v1: vi, s0: s, s1: s };
+              showMark();
+              return;
+            }
+            pushUndo(p);
             var st = cellState(p, v, s), accent = e.shiftKey || e.button === 2;
             var mode = accent ? (st === "accent" ? "on" : "accent") : (st === "off" ? "on" : "off");
             paint = { mode: mode, voice: v };
@@ -261,6 +291,11 @@
             markDirty();
           });
           c.addEventListener("pointerenter", function () {
+            if (marking) {
+              mark = { p: p, v0: Math.min(marking.vi, vi), v1: Math.max(marking.vi, vi), s0: Math.min(marking.s, s), s1: Math.max(marking.s, s) };
+              showMark();
+              return;
+            }
             if (!paint || paint.voice !== v) return;
             setCell(p, v, s, paint.mode);
             c.className = c.className.replace(/\b(off|on|accent)\b/, paint.mode);
@@ -270,6 +305,7 @@
             if (e.key !== "Enter" && e.key !== " ") return;
             e.preventDefault();
             var st = cellState(p, v, s), mode = e.shiftKey ? (st === "accent" ? "on" : "accent") : (st === "off" ? "on" : "off");
+            pushUndo(p);
             setCell(p, v, s, mode);
             c.className = c.className.replace(/\b(off|on|accent)\b/, mode);
             markDirty();
@@ -279,6 +315,76 @@
       }
       grid.append(row);
     });
+    showMark();
+  }
+
+  // ---------------------------------------------------------------- the mark: copy, cut, paste, delete
+
+  function markOn() { var p = current(); return mark && mark.p === p ? mark : null; }
+  function showMark() {
+    var m = markOn(), cells = $("grid").querySelectorAll(".gcell");
+    for (var i = 0; i < cells.length; i++) {
+      var c = cells[i], vi = VOICES.indexOf(c.dataset.voice), st = +c.dataset.step;
+      c.classList.toggle("mark", !!m && vi >= m.v0 && vi <= m.v1 && st >= m.s0 && st <= m.s1);
+    }
+    renderMarkBar();
+  }
+  function renderMarkBar() {
+    var m = markOn(), p = current();
+    $("markMode").setAttribute("aria-pressed", markMode ? "true" : "false");
+    $("markMode").classList.toggle("on", markMode);
+    $("markMode").disabled = !p;
+    $("markCopy").disabled = $("markCut").disabled = $("markDel").disabled = !m;
+    $("markPaste").disabled = !clip || !p;
+    $("markUndo").disabled = !undo.length;
+    $("markInfo").textContent = m ? (m.v1 - m.v0 + 1) + " × " + (m.s1 - m.s0 + 1) + " steps marked" + (clip ? " · " + clip.rows + " × " + clip.cols + " copied" : "")
+                                  : clip ? clip.rows + " × " + clip.cols + " steps copied" : "";
+  }
+  function clearMark() { mark = null; showMark(); }
+  function markAll() {
+    var p = current();
+    if (!p) return;
+    mark = { p: p, v0: 0, v1: VOICES.length - 1, s0: 0, s1: p.steps - 1 };
+    showMark();
+  }
+  function copyMark() {
+    var m = markOn();
+    if (!m) return false;
+    clip = { rows: m.v1 - m.v0 + 1, cols: m.s1 - m.s0 + 1, cells: [] };
+    for (var r = 0; r < clip.rows; r++) {
+      var row = [];
+      for (var k = 0; k < clip.cols; k++) row.push(cellState(m.p, VOICES[m.v0 + r], m.s0 + k));
+      clip.cells.push(row);
+    }
+    renderMarkBar();
+    return true;
+  }
+  function clearSteps(m) {
+    for (var vi = m.v0; vi <= m.v1; vi++) for (var st = m.s0; st <= m.s1; st++) setCell(m.p, VOICES[vi], st, "off");
+  }
+  function deleteMark() {
+    var m = markOn();
+    if (!m) return;
+    pushUndo(m.p);
+    clearSteps(m);
+    markDirty(); renderGrid();
+  }
+  function cutMark() {
+    if (!copyMark()) return;
+    deleteMark();
+    setStatus("Cut " + clip.rows + " × " + clip.cols + " steps.");
+  }
+  // pastes at the mark's top left (nothing marked: the pattern's start); what doesn't fit is left out
+  function pasteClip() {
+    var p = current();
+    if (!p || !clip) return;
+    var m = markOn(), v0 = m ? m.v0 : 0, s0 = m ? m.s0 : 0;
+    var rows = Math.min(clip.rows, VOICES.length - v0), cols = Math.min(clip.cols, p.steps - s0);
+    pushUndo(p);
+    for (var r = 0; r < rows; r++) for (var k = 0; k < cols; k++) setCell(p, VOICES[v0 + r], s0 + k, clip.cells[r][k]);
+    mark = { p: p, v0: v0, v1: v0 + rows - 1, s0: s0, s1: s0 + cols - 1 };
+    markDirty(); renderGrid();
+    setStatus("Pasted at step " + (s0 + 1) + (rows < clip.rows || cols < clip.cols ? " (what didn't fit was left out)" : "") + ".");
   }
 
   function markPlayhead(step) {
@@ -512,10 +618,24 @@
     $("kitsFolder").addEventListener("change", function (e) { readKitsFolder(Array.prototype.slice.call(e.target.files)); e.target.value = ""; if (playing) restartPlay(); });
     $("midiGm").addEventListener("click", function () { exportMidi("gm"); });
     $("midiPack").addEventListener("click", function () { exportMidi("pack"); });
-    document.addEventListener("pointerup", function () { if (paint) { paint = null; } });
+    document.addEventListener("pointerup", function () { paint = null; marking = null; });
+    $("markMode").addEventListener("click", function () { markMode = !markMode; renderMarkBar(); });
+    $("markCopy").addEventListener("click", function () { if (copyMark()) setStatus("Copied " + clip.rows + " × " + clip.cols + " steps."); });
+    $("markCut").addEventListener("click", cutMark);
+    $("markPaste").addEventListener("click", pasteClip);
+    $("markDel").addEventListener("click", deleteMark);
+    $("markUndo").addEventListener("click", undoEdit);
     document.addEventListener("keydown", function (e) {
       if (location.hash !== "#patterns" || e.target.closest("input, select, textarea")) return;
       if (e.code === "Space" && !e.target.closest("button")) { e.preventDefault(); if (playing) stop(); else start(); }
+      var cmd = e.metaKey || e.ctrlKey, key = e.key.toLowerCase();
+      if (cmd && key === "z" && !e.shiftKey) { e.preventDefault(); undoEdit(); }
+      else if (cmd && key === "a") { e.preventDefault(); markAll(); }
+      else if (cmd && key === "c") { if (copyMark()) { e.preventDefault(); setStatus("Copied " + clip.rows + " × " + clip.cols + " steps."); } }
+      else if (cmd && key === "x") { if (markOn()) { e.preventDefault(); cutMark(); } }
+      else if (cmd && key === "v") { if (clip) { e.preventDefault(); pasteClip(); } }
+      else if ((e.key === "Delete" || e.key === "Backspace") && markOn()) { e.preventDefault(); deleteMark(); }
+      else if (e.key === "Escape" && markOn()) clearMark();
     });
     // MIDI files and DRUMS.LIB dropped on the Patterns page (the Kits page takes sounds)
     $("pagePatterns").addEventListener("dragover", function (e) { e.preventDefault(); e.stopPropagation(); });
@@ -534,6 +654,8 @@
     open: function (bytes, name) { openBytes(bytes, name || "DRUMS.LIB", null); },
     library: function () { return lib; },
     selected: function () { return sel; },
+    mark: function (v0, v1, s0, s1) { mark = { p: current(), v0: v0, v1: v1, s0: s0, s1: s1 }; showMark(); },
+    copy: copyMark, cut: cutMark, paste: pasteClip, del: deleteMark, undo: undoEdit,
     bytes: function () { return DrumLib.writeLibrary(lib.patterns); },
   };
 

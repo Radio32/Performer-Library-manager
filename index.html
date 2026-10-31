@@ -156,8 +156,18 @@
           <span class="help" id="kitPlaying"></span>
         </div>
 
+        <div class="btnrow markbar">
+          <button class="btn small" id="markMode" type="button" aria-pressed="false" title="On: dragging marks steps instead of setting them (or hold ⌥ / Alt while dragging)">Mark</button>
+          <button class="btn small" id="markCopy" type="button" title="⌘C / Ctrl+C">Copy</button>
+          <button class="btn small" id="markCut" type="button" title="⌘X / Ctrl+X">Cut</button>
+          <button class="btn small" id="markPaste" type="button" title="⌘V / Ctrl+V: at the mark's top left">Paste</button>
+          <button class="btn small danger" id="markDel" type="button" title="⌫ / Delete: clear the marked steps">Delete</button>
+          <button class="btn small" id="markUndo" type="button" title="⌘Z / Ctrl+Z">Undo</button>
+          <span class="help" id="markInfo"></span>
+        </div>
         <div class="grid" id="grid" role="grid" aria-label="Steps"></div>
         <p class="help">Click a step to set it, SHIFT + click (or right click) for an accent. Drag to paint. Click a voice's name to hear it.</p>
+        <p class="help"><b>Marking:</b> hold ⌥ (Alt) and drag over steps, or turn <b>Mark</b> on and drag. Then copy, cut or delete them. Paste puts the copied steps at the top left of the mark, so to copy bar 1 into bar 2, mark bar 1 and copy, then ⌥-click the first step of bar 2 and paste. Copied steps can be pasted into another pattern too. ⌘A marks the whole pattern, Esc clears the mark, ⌘Z undoes.</p>
 
         <div class="btnrow exportrow">
           <span class="help">Export this pattern as MIDI:</span>

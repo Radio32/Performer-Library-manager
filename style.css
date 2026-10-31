@@ -200,6 +200,10 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .gcell.bar { margin-left: 4px; }
 .gcell.on { background: var(--wave); }
 .gcell.accent { background: var(--accent); }
+.gcell.mark { box-shadow: inset 0 0 0 2px var(--accent); filter: brightness(1.08); }
+.gcell.mark.off { background: var(--accent-soft); }
+.markbar { margin-bottom: 8px; align-items: center; }
+.markbar .btn.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .gcell.now { outline: 2px solid var(--accent); outline-offset: -2px; }
 .gcell.now.accent { outline-color: var(--fg); }
 .gcell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
